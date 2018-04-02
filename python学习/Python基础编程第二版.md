@@ -30,3 +30,37 @@ for line in fileinput.input(filename):
 for line in open(filename):
     process(line)
 ```
+### 有用的包
++ 图形界面：`TKinter` `wxpython` `PyQt`
++ 数据库：`SQLite`
++ Python Web应用：`urllib2` `BeautifulSoup`
++ 性能及单元测试：`PyLint` `PyChecker` `unittest` `doctest`
++ 扩展python：`Jython` `CPython`
+### 测试
+**先测试，后代码**
++ 精确的**需求说明**，明确程序的目标，描述程序必须满足的需求
++ 为函数编写准备测试样例
+
+**测试工具**：
+`doctest` 用来检查函数，只要在它的文档字符串里面添加在交互解释器中的测试案例就可以了。
+```py
+def square(x):
+    '''
+    squares
+
+    >>> square(2)
+    4
+    >>> square(3)
+    9
+    '''
+    return x*x
+# 这一段文档说明里面包含了测试样例
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod(my_math) # 假设模块名叫做my_math
+
+$ python my_math.py -v # -v参数表示详述
+```
+
+`unittest` 可以做更加成熟的单元测试
