@@ -23,3 +23,15 @@
 
 **pandas数据读入**
 数据读入后会转换为pandas的数据类型，如`numpy.int64`，这在与MongoDB交互时，由于MongoDB只能写入数据，不能写入实例，将行转换为`dict`, 再对于数字**18**写入时，在python里是`numpy.int64`的实例，所以不能写入，但是直接转换为 `list` 则会变成int类型。
+
+**pandas数据输出省略问题**
++ `pd.set_option('display.max_rows', len(x))`
++ 类似的可以设置打印输出的最大列数
+
+**正则表达式**
+```py
+pattern = re.compile('\\[(.*)\\]')
+pattern.match(str(list(data.loc[i]))).group(1)
+# \\在转义后成为\，在正则表达式里面表示转义斜杠
+# group(1)取出匹配的组
+```
