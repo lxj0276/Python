@@ -145,7 +145,7 @@ obj2[obj2 > 0]
 obj4 = Series(sdata, index=states)
 # 可以传入新索引，缺失的值为Na
 obj4.isnull()
-obj4,notnull()
+obj4.notnull()
 # 检测缺失值，并且返回布尔数组
 ```
 
@@ -207,6 +207,7 @@ data[data < 0] = 5 # 布尔型dataframe索引
 # 总结起来索引形式有 obj[val], obj.ix[val], 注意不同表现形式
 # 也有icol。irow方法，按照位置选取
 ```
+*注：icol,irow方法已经没有了，有iloc取代*
 
 **算术运算和数据对齐**
 ```py
