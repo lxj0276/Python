@@ -2,6 +2,7 @@ from cassandra.cluster import Cluster
 import pandas as pd
 import re
 
+
 def main():
     cluster = Cluster(['127.0.0.1'])
     session = cluster.connect()
