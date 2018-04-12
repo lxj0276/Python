@@ -1,0 +1,51 @@
+# 高效的Python
+
+## 高效的数量上计算复杂的运算
+**案例一**
+Python本身提供了优秀的运算能力
+
+```py
+loops = 25000000
+a = range(1, loops)
+def f(X):
+  return 3 * log(x) + cos(x) ** 2
+%timeit [f(i) for i in a]
+```
+只需要 **15秒** 完成 **2500次** 运算
+但使用 `Numpy` 能够更加优秀的完成任务，将时间缩短到 **1.7秒**
+```py
+import Numpy as np
+a = np.arange(1, loops)
+r = 3 * np.log(a) + np.cos(a) ** 2
+```
+已经很快了，但还能继续优化，有一个叫做 `numexpr` 专门用来改善 `numpy` 的性能
+```py
+import numexpr as ne
+ne.set_num_threads(1)
+f = '3 * log(a) + cos(a) ** 2'
+r = ne.evaluate(f)
+```
+这样能够降低到   **1.2秒**，但还不够，`numexpr` 内建执行并行运算的功能，**使用全部线程** 进行运算，
+```py
+ne.set_num_threads(4) # 线程数为4
+r = ne.evaluate(f)
+```
+这能下降到 **0.5秒** ！！
+
+**案例二**
+考虑很大的两个 `pandas` `DataFrame` 的复制，或运算。
++ 用 `append` 逐行添加，效率极慢。**事先决定dataframe的大小提供性能**
++ 逐行赋值，用 `df.loc[0]` `df.iloc[]` ，慢。用 `df.at[1,'time']` 逐个添加更快！
++ 因为 `at` 的效率是 `loc` 的 **1000倍**
+
+### 总结
+需要高效的运算有以下途径：
+**案例一：**
++ Python本身提供的便利。
++ 某些库提供 **专业性的便利**，如 `numpy` 在数组运算上本身就有优化
++ 某些专门为优化性能而存在的库、库函数 `functools.lru_cache()` 函数和 `numexpr` 库， `Cython` 库
++ **并行、多线程**，使用多个线程并行运算
+
+**案例二：**
++ 库提供的不同方法效率是有差别的，**根据需求，并了解提供的方法的效率是关键**
++ `df.at[]` 效率是 `df.loc[]` 的 **1000倍**
