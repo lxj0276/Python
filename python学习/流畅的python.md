@@ -31,11 +31,11 @@ __bool__() # 布尔
 ```
 
 ### 第二章
-可变序列<br>
- list、bytearray、array.array、collections.deque、memoryview
+可变序列
+list、bytearray、array.array、collections.deque、memoryview
 
-不可变序列<br>
- tuple、str、bytes
+不可变序列
+tuple、str、bytes
 
 **列表推导**
 ```py
@@ -147,6 +147,7 @@ d.values() # 返回值
 ```
 
 用get方法或是 `d[k]` 时，如果没有元素会报错，这时一般用 `d.get(k,default)` 来代替，给找不到的键一个默认的返回值。
+
 ```py
 index.setdefault(word,[]).append(location)
 # setdefault如果没找到返回[]，找到返回找到的值，不会改变原来的值
@@ -226,7 +227,7 @@ class BingoCage:
 
 `*`可以对应多个无名参数，`**`可以对应多个形如`key=value`的参数对
 ```py
-def tag(name,*content,cls=None,**attrs)
+def tag(name,*content,cls=None,**attrs):
     return name
 # name参数后面的参数计入到content数组里，而后面的键值对记录到attrs字典中
 

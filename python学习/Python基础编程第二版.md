@@ -32,10 +32,12 @@ for line in open(filename):
 ```
 ### 有用的包
 + 图形界面：`TKinter` `wxpython` `PyQt`
-+ 数据库：`SQLite`
++ 数据库：`SQLite` `redis` `cassandra` `MongoDB`
 + Python Web应用：`urllib2` `BeautifulSoup`
 + 性能及单元测试：`PyLint` `PyChecker` `unittest` `doctest`
 + 扩展python：`Jython` `CPython`
++ Excel: `xlsutils` `xlrd` `xlwt`
+
 ### 测试
 **先测试，后代码**
 + 精确的**需求说明**，明确程序的目标，描述程序必须满足的需求
