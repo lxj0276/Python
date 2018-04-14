@@ -37,3 +37,10 @@ pattern.match(str(list(data.loc[i]))).group(1)
 # \\在转义后成为\，在正则表达式里面表示转义斜杠
 # group(1)取出匹配的组
 ```
+关于字符串的优化问题：**熟练使用, `''.format()` 方法简化语法**
+```py
+string = '(' + pattern.match(str(list(data.loc[i]))).group(1) + ')'
+
+# 简化为
+string = '({0})'.format(pattern.match(str(list(data.loc[i]))).group(1))
+```
