@@ -49,3 +49,42 @@ r = ne.evaluate(f)
 **案例二：**
 + 库提供的不同方法效率是有差别的，**根据需求，并了解提供的方法的效率是关键**
 + `df.at[]` 效率是 `df.loc[]` 的 **1000倍**
+
+## Numba库
+`Numba` 是开源、`Numpy` 感知的优化Python代码编译器。考虑一个两层循环 `5000*5000`，返回计数总循环次数的数量，涉及到 **25000000** 次计算。
+**版本一**
+```py
+def f_py(I,J):
+    res = 0
+    for i in range(I):
+        for i in range(J):
+            res += int(cos(log(1)))
+    return res
+```
+这是最慢的版本，明显用Numpy向量化处理可以更高的效率
+**版本二**
+```py
+def f_np(I,J):
+    a = np.ones((I,J), dtype=np.float64)
+    return int(np.sum(np.cos(npp.log(a))),a)
+```
+用Numpy可以获得更高的效率，**但也消耗更多的内存**
+**版本三**
+```py
+import numba as nb
+f_nb = nb.jit(f_py)
+%timeit f_nb(I,J)
+```
+由于产生了可调用编译版本，**可以获得更高的性能**
+并且 `Numba` 支持 `Numpy` ，即便函数中已经用 **`Numpy` 向量化** 的方法进行了优化，也还是可以利用 `Numba` 再度提高效率。
+
+### 总结
++ **效率**，一行代码，原始函数不需要改变
++ **加速**，无论是 `numpy`向量还是纯python，都可以提高速度
++ **内存**，不需要初始化大型数组对象，**编译器专门为问题生成了机器代码**，维持和纯python相同的内存效率
+
+## Cython
+**有待了解**
+
+## 用GPU进行蒙特卡罗模拟
+**尽请期待**
