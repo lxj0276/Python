@@ -44,3 +44,18 @@ string = '(' + pattern.match(str(list(data.loc[i]))).group(1) + ')'
 # 简化为
 string = '({0})'.format(pattern.match(str(list(data.loc[i]))).group(1))
 ```
+
+**灵活利用Pandas和Numpy的向量化计算方式**
+对于 **重复性的操作**，pandas和numpy提供了向量化的处理方式，比使用普通的python循环要快得多
+```py
+DAX['Ret_loop'] = 0.0 # 创建新列
+for i in range(1, len(DAX)):
+    DAX['Ret_loop'][i] = np.log(DAX['close'][i] / DAX['close'][i-1])
+```
+以上使用了numpy的向量化数值方法 `np.log`，但作用于普通的数值。实际上可以不用循环，进行更高效的运算
+```py
+DAX['Return'] = np.log(DAX['close'] / DAX['close'].shift(1))
+```
+这时传入 `np.log` 的参数是一个 **向量**，同时使用了 `series.shift(1)` 使得列移动一个索引位置
+
+
