@@ -1,4 +1,6 @@
 ## 实战经验
+
+### 利用Python进行数据分析
 **ipython**
 + ipython中 **读入路径还有中文的文件**， 增加参数 `engine='python'`
 
@@ -58,4 +60,33 @@ DAX['Return'] = np.log(DAX['close'] / DAX['close'].shift(1))
 ```
 这时传入 `np.log` 的参数是一个 **向量**，同时使用了 `series.shift(1)` 使得列移动一个索引位置
 
+### 其他
+**文件操作**
+只读取数行，在针对大文件时，取小样本很有用
+```py
+with open('test.txt','w') as fw:
+     for i in range(1000):
+         fw.write(f.readline())
+```
+同时，读取 **大文件** 时，一次项读入十分消耗内存，可以利用文件迭代的特性
+```py
+for line in open('test.txt'):
+    pass
+```
 
+**字典默认值**
+对于普通的 `dict` 找不到键值会报错，有几种解决方案
++ `dict.setdefault(key, '')` 给key设定为默认值，如果key已经存在就不改变原来的值
++ `dict.get(key,'')` 在获取键key时，如果不存在key就设置新key，并且设置默认值
++ `collections.defaultdict(int)` 参数给定的是类型，将返回类型默认值
+也可以传入一个 **无参函数规定默认值**
+
+可以用来 **实现字典计数**
+```py
+l = [1, 2, 2, 3, 3, 3, 4, 4, 4, 4]
+d = defaultdict(int)
+for i in l:
+    d[i] += 1
+sorted(d.keys(), key=lambda obj:d[obj], reverse=True)[0]
+# 寻找value最大的键
+```
