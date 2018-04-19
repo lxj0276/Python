@@ -73,11 +73,15 @@ with open('test.txt','w') as fw:
 for line in open('test.txt'):
     pass
 ```
+按行操作字符串 **可能有换行符**，因而可以使用 `strip` 删去
+```py
+line = line.strip('\n')
+```
 
 **字典默认值**
 对于普通的 `dict` 找不到键值会报错，有几种解决方案
 + `dict.setdefault(key, '')` 给key设定为默认值，如果key已经存在就不改变原来的值
-+ `dict.get(key,'')` 在获取键key时，如果不存在key就设置新key，并且设置默认值
++ `dict.get(key,'')` 在获取键key时，如果不存在key就设置新key，并且设置默认值，在获取 **未知存在** 的键时非常有用
 + `collections.defaultdict(int)` 参数给定的是类型，将返回类型默认值
 也可以传入一个 **无参函数规定默认值**
 
