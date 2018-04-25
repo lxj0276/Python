@@ -94,3 +94,7 @@ for i in l:
 sorted(d.keys(), key=lambda obj:d[obj], reverse=True)[0]
 # 寻找value最大的键
 ```
+在上面的例子中也要注意列表默认值。因为排序的列表可能为空，那么取位置 `list[0]` 可能非法报错，因此可以写三元语句 `A if boolexp else B`解决。
+```py
+result = sorted(d.keys(), key=lambda obj:d[obj], reverse=True)[0] if len(d)>0 else None
+```
