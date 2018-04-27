@@ -3,6 +3,7 @@ from pymongo import MongoClient
 from collections import defaultdict
 import redis
 from cassandra.cluster import Cluster
+import time
 
 
 def test_dict():
@@ -74,13 +75,17 @@ def mdb_main(file, sep, arg_list, store=False):
 def redis_store(file, r, sep):
     with open(file, 'r') as f:
         for line in f:
-            line = line.strip('\n')
-            s, p, o = line.split(' ')
-            r.sadd(s, '{} {}'.format(p,o))
-            r.sadd(o, '{} {}'.format(s,p))
-            r.sadd(p, s)
-            r.hsetnx(o+'hash', s, 0) # key-hash表，键值key不能重复
-            r.hincrby(o+'hash', s, 1) # 递增计数
+            try:
+                line = line.strip('\n')
+                s, p, o = line.split(' ')
+                r.sadd(s, '{} {}'.format(p, o))
+                r.sadd(o, '{} {}'.format(s, p))
+                r.sadd(p, s)
+                r.hsetnx(o + 'hash', s, 0)  # key-hash表，键值key不能重复
+                r.hincrby(o + 'hash', s, 1)  # 递增计数
+            except:
+                pass
+
 
 
 def redis_main(file, sep, arg_list, store=False):
@@ -140,8 +145,8 @@ def cassandra_main(file, sep, arg_list, store=False):
     session.execute(
         "create keyspace if not exists bigdata with replication={'class':'SimpleStrategy', 'replication_factor': 1}")
     session.execute('use bigdata')
-
-    # session.execute('create table lord (id int primary key, S1 text, P1 text, O1 text)')
+    session.execute('create table lord')
+    session.execute('create table lord (id int primary key, S1 text, P1 text, O1 text)')
 
     if store:
         cassandra_store(file, session, sep)
@@ -181,9 +186,13 @@ def main():
     P1, P2 = 'isCitizenOf', 'owns'
     O2 = 'Cuba'
     arg_list = [S1, O1, P1, P2, O2]
-    # mdb_main('yagoThreeSimplified.txt', ' ', arg_list)
-    # redis_main('test.txt', ' ', arg_list, True)
-    cassandra_main('test.txt', ' ', arg_list)
+
+    start = time.time()
+    # mdb_main('yagoThreeSimplified.txt', ' ', arg_list, True)
+    redis_main('yagoThreeSimplified.txt', ' ', arg_list, True)
+    # cassandra_main('yagoThreeSimplified.txt', ' ', arg_list, True)
+    end = time.time()
+    print('total cost:', end - start)
 
 
 if __name__ == '__main__':
