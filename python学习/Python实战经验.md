@@ -96,5 +96,26 @@ sorted(d.keys(), key=lambda obj:d[obj], reverse=True)[0]
 ```
 在上面的例子中也要注意列表默认值。因为排序的列表可能为空，那么取位置 `list[0]` 可能非法报错，因此可以写三元语句 `A if boolexp else B`解决。
 ```py
-result = sorted(d.keys(), key=lambda obj:d[obj], reverse=True)[0] if len(d)>0 else None
+result = sorted(d.keys(), key=lambda obj:d[obj],
+reverse=True)[0] if len(d)>0 else None
 ```
+
+**时间模块**
++ 引入 `time` 包，利用 `time.time()` 记录时间，并记录程序运行时间
+
+**异常**
++ 全捕捉
+    ```py
+    try:
+        ...
+    except:
+        pass
+    ```
+    可以捕捉全部可能出现的异常
++ 捕捉多个异常并包装为对象
+    ```py
+    try:
+        ...
+    except(ZeroDivisionError, FileExistsError) as e:
+        print(e.message)
+    ```
