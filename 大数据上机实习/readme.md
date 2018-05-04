@@ -88,13 +88,17 @@
 # 重启时
 rm -r /tmp/dfs # 删除临时文件
 ./bin/hadoop namenode -format # 格式化namenode
+# 以上出故障再使用
 
+# 正常关闭正常启动即可
 cd $HADOOP_HOME
-./sbin/start-dfs.sh # 查看进程
-hdfs dfsadmin -safemode leave # 关闭安全模式
+./sbin/start-dfs.sh # 需要查看进程
+hdfs dfsadmin -safemode leave # 全部重开始再设置，关闭安全模式
 
 cd $HBASE_HOME
-./bin/start-hbase.sh # 查看进程
+./bin/start-hbase.sh # 需要查看进程
+
+./bin/hbase shell # 进入shell
 ```
 
 + 附配置文件总览
