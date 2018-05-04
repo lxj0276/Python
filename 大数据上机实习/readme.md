@@ -1,9 +1,13 @@
 # 编程手记
 
-## 虚拟机
+## Java
++ 在函数的声明后面添加 `throws Exception` 表示这个函数允许有未处理的异常，并将该异常上抛，不加这一句，则会出现未处理的异常的情况
+
+## Ubuntu虚拟机
 + `VMware` 使用 `Ctrl + G` 使得鼠标键盘进入虚拟机并用 `Ctrl + Alt` 退出
 + `Ubunto` 使用 `Ctrl + Alt + T` 打开命令行
 + `sudo apt-get install` 远程安装
++ `Ctrl + h` 查看隐藏文件夹
 
 **文本和命令行的复制黏贴**
 完成虚拟机和客户机之间的复制黏贴的方法是使用 `ssh` 在客户机中访问虚拟机。
@@ -43,3 +47,102 @@
   sudo chmod -R 755 /usr/local/hadoop/hadoop-2.7.5
   sudo chown -R hadoop:hadoop /usr/local/hadoop/hadoop-2.7.5
   ```
++ `-R` 表示 **递归**
++ 这样 `sudo` 的作用就体现了，在桌面端中，有时用户没有权限创建文件夹，就可以利用命令行的 `sudo` 命令创建文件夹
++ 有时程序需要写入，但是若用户没有权限，那么无法写入，从而运行不成功，这时要使得需要写入的文件夹拥有权限
+
+**hostname hosts**
++ 这两个文件都在 `/etc` 目录下，前者给出了主机名称，后者给出了 IP地址
++ `localhost` 一般指 `127.0.0.1`
+
+**进程**
++ 察看进程 `jps`
++ 关闭进程 `kill 进程号`
+
+## hadoop
+**没有datanode**
+在每次执行 `hadoop namenode -format` 时，都会为 `NameNode` 生成 `namespaceID`，但是在 `hadoop.tmp.dir` 目录下的 `DataNode` 还是保留上次的 `namespaceID`，因为 `namespaceID` 的不一致，而导致 `DataNode` 无法启动
+
+所以 **只要在每次执行 `hadoop namenode -format` 之前，先删除 `hadoop.tmp.dir`（路径为 `/usr/local/hadoop/` 下的）`tmp` 目录就可以启动成功**
+
+以后在 `hadoop format` 过程中 要注意不要频繁地 `reformat  namnode`（格式化命令为  `./bin/hadoop namenode -format`）的ID信息。`format` 过程中选择 **N（否)** 就是了
+
+**关闭安全模式**
++ 开启安全模式时，`hbase` 无法正常工作，`hdfs dfsadmin -safemode leave`
+可以关闭安全模式
+
+**设置Hadoop和hbase的IP即端口**
++ 要让用户在可能写入的地址拥有 **写入的权限**
++ `hbase` 在 `hbase-site.xml` 文件中 `master:9000`
++ `hadoop` 在 `core-site.xml` 文件中 `master:9000`
++ **保证他们的端口一致** , 这样 `Hmaster` 进程才不会消失
++ **master info** 的端口需要配置
+```py
+  <property>
+        <name>hbase.master.info.port</name>
+        <value>60010</value>
+  </property>
+```
++ **启动顺序**
+```shell
+# 重启时
+rm -r /tmp/dfs # 删除临时文件
+./bin/hadoop namenode -format # 格式化namenode
+
+cd $HADOOP_HOME
+./sbin/start-dfs.sh # 查看进程
+hdfs dfsadmin -safemode leave # 关闭安全模式
+
+cd $HBASE_HOME
+./bin/start-hbase.sh # 查看进程
+```
+
++ 附配置文件总览
+
+修改 `hostname`：`master`
+修改 `host`文件 ： `192.168.238.128 master`
+
+*hbase-site.xml*
+```xml
+    <property>  
+        <name>hbase.rootdir</name>  
+        <value>hdfs://master:9000/hbase</value>  
+    </property>  
+    <property>  
+        <name>hbase.master</name>  
+        <value>hdfs://master:60000</value>  
+    </property>
+    <property>  
+        <name>hbase.cluster.distributed</name>  
+        <value>true</value>  
+    </property>
+    <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+    </property>
+    <property>  
+        <name>hbase.zookeeper.quorum</name>  
+        <value>192.168.238.128</value>  
+    </property>  
+    <property>
+    	<name>hbase.zookeeper.property.dataDir</name>
+    <value>/usr/local/hbase/zk_data</value>
+    </property>
+    <property>
+        <name>hbase.master.info.port</name>
+        <value>60010</value>
+    </property>
+```
+
+*core-site.xml*
+```xml
+    <property>
+             <name>hadoop.tmp.dir</name>
+             <value>file:/usr/local/hadoop/hadoop-2.7.5/tmp</value>
+             <description>Abase for other temporary directories.</description>
+        </property>
+        <property>
+             <name>fs.defaultFS</name>
+             <value>hdfs://master:9000</value>
+        </property>
+```
