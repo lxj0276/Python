@@ -38,8 +38,3 @@
 
 **权限问题**
 + 修改、查看文件时需要注意权限，比如 `vi` 命令，在用户没有读权限时是打不开文件的，类似的命令还有 `gedit`
-+ 对于一些 `ubuntu`中只有读权限的文件夹，可以更改权限
-  ```
-  sudo chmod -R 755 /usr/local/hadoop/hadoop-2.7.5
-  sudo chown -R hadoop:hadoop /usr/local/hadoop/hadoop-2.7.5
-  ```
