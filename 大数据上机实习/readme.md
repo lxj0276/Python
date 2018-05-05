@@ -187,3 +187,8 @@ cd $HBASE_HOME
 **hive**
 + 需要导入 `hbase` 的库
 + 需要选择正确 `mysql connector`， 正确版本为 `mysql-connector-java.5.1.30`
++ 允许远程连接
+```shell
+hive --service metastore
+hive --service hiveserver2
+```

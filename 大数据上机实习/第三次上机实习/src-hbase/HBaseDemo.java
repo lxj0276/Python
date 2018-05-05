@@ -1,10 +1,3 @@
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.NavigableMap;
-import java.util.Random;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellScanner;
@@ -34,15 +27,16 @@ public class HBaseDemo {
         connection = ConnectionFactory.createConnection(configuration);
         admin = connection.getAdmin();
     }
-    public static void main(String[] args) throws Exception{
-        HBaseDemo hbd = new HBaseDemo();
-        hbd.createTable("wujintao", "c1", "c2");
+
+    public void connnectTable(String name) throws Exception{
+        TableName tableName = TableName.valueOf(name);
+        table = connection.getTable(tableName);
     }
 
     //创建表
     public void createTable(String tablename,String... cf1) throws Exception{
         //获取admin对象
-        Admin admin = connection.getAdmin();
+        admin = connection.getAdmin();
         //创建tablename对象描述表的名称信息
         TableName tname = TableName.valueOf(tablename);//bd17:mytable
         //创建HTableDescriptor对象，描述表信息
@@ -60,5 +54,23 @@ public class HBaseDemo {
         //调用admin的createtable方法创建表
         admin.createTable(tDescriptor);
         System.out.println("表"+tablename+"创建成功");
+    }
+
+    //新增数据到表里面Put
+    public void putData(String[] head, String[] line, int rowKey) throws Exception{
+        Put put = new Put(Bytes.toBytes("rowkey_" + rowKey));
+        for(int i=0; i<head.length; ++i){
+            put.addColumn(Bytes.toBytes(head[i]), Bytes.toBytes(head[i]), Bytes.toBytes(line[i]));
+        }
+
+        table.put(put);
+    }
+
+    public void get(String tableName, int rowKey, String attr) throws Exception{
+        connnectTable(tableName);
+
+        Get get = new Get(Bytes.toBytes("rowkey_" + rowKey));
+        Result rs = table.get(get);
+        System.out.println(new String(rs.getValue(Bytes.toBytes(attr), Bytes.toBytes(attr))));
     }
 }
