@@ -2,12 +2,45 @@
 
 ## Java
 + 在函数的声明后面添加 `throws Exception` 表示这个函数允许有未处理的异常，并将该异常上抛，不加这一句，则会出现未处理的异常的情况
++ `f(String... s)` 可以用 `...` 表示多个参数或一个字符串数组
++ 写入文件的写操作要记得 `flush` 这样才会输出到文件中
++ `byte` 转 `String` 利用 `String` 的 **构造方法** 即可
+
+**正则表达式与CSV文件**
++ 对于一个 `.csv` 文件，对于元素内部含有 `,` 的情况会使用 `""` 包围该元素，这时直接按照 `,` 分隔文件会出错
++ 正确做法是按照正则表达式 `,(?=([^\\\"]*\\\"[^\\\"]*\\\")*[^\\\"]*$)` 分隔，
++ 正则表达式中 `^` 表示行头， `$` 表示行尾
+  > `^[a-z] `只能匹配以小写字母为行首的行: `"a..."`
+`[a-z]$`只能匹配以小写字母为行尾的行: `"...a"`
+`^[a-z]$` 应该只能匹配只有一个小写字母的行: `"a"`
++  `(?=中国)人` 表示 **只匹配** `中国人` 中的 `人`，而不能是其他部位的人
+
+**javacsv**
+```java
+        try{
+            // create csv
+            CsvReader csvReader = new CsvReader(filename);
+            // read header
+            csvReader.readHeaders();
+            String[] headers = csvReader.getHeaders();
+
+            int rowKey = 0;
+            while(csvReader.readRecord()){
+                hbd.putData(headers, csvReader.getValues(), rowKey);
+                rowKey++;
+            }
+
+        }catch (IOException ex){
+            System.err.println(ex.getMessage());
+        }
+```
 
 ## Ubuntu虚拟机
 + `VMware` 使用 `Ctrl + G` 使得鼠标键盘进入虚拟机并用 `Ctrl + Alt` 退出
 + `Ubunto` 使用 `Ctrl + Alt + T` 打开命令行
 + `sudo apt-get install` 远程安装
 + `Ctrl + h` 查看隐藏文件夹
++ `unzip` 解压 `.zip` 文件
 
 **文本和命令行的复制黏贴**
 完成虚拟机和客户机之间的复制黏贴的方法是使用 `ssh` 在客户机中访问虚拟机。
@@ -150,3 +183,7 @@ cd $HBASE_HOME
              <value>hdfs://master:9000</value>
         </property>
 ```
+
+**hive**
++ 需要导入 `hbase` 的库
++ 需要选择正确 `mysql connector`， 正确版本为 `mysql-connector-java.5.1.30`
