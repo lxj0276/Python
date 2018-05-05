@@ -139,19 +139,15 @@ public class HiveDemo {
         sql = "create table "
                 + tableName
                 + " " + state + " row format delimited fields terminated by '\t'";
-        res = stmt.executeQuery(sql);
-        if(res.next()){
-            System.out.println(res.getString(1));
-        }
+        stmt.execute(sql);
+        System.out.println("Table Created: " + tableName);
     }
 
     public void dropTable(Statement stmt, String tableName) throws SQLException {
         // 创建的表名
         sql = "drop table " + tableName;
-        res = stmt.executeQuery(sql);
-        if(res.next()){
-            System.out.println(res.getString(1));
-        }
+        stmt.execute(sql);
+        System.out.println("Table dropped: " + tableName);
     }
 
     public Connection getConn() throws ClassNotFoundException,

@@ -8,7 +8,7 @@ import java.sql.Statement;
 
 
 public class main {
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception{
         Connection conn = null;
         Statement stmt = null;
         String fileNameMovie = "tmdb_5000_movies.csv";
@@ -27,7 +27,7 @@ public class main {
 
             // jdbc
             hd.dropTable(stmt, tableName);
-            //hd.createTable(stmt, tableName, headers);
+            hd.createTable(stmt, tableName, headers);
 
         }catch (ClassNotFoundException e) {
             e.printStackTrace();
@@ -37,14 +37,15 @@ public class main {
             System.exit(1);
         } finally {
             try {
-                if (conn != null) {
-                    conn.close();
-                }
                 if (stmt != null) {
                     stmt.close();
                 }
+                if (conn != null) {
+                    conn.close();
+                }
             } catch (SQLException e) {
                 e.printStackTrace();
+                System.exit(1);
             }
         }
     }

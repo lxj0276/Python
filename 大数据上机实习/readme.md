@@ -188,7 +188,13 @@ cd $HBASE_HOME
 + 需要导入 `hbase` 的库
 + 需要选择正确 `mysql connector`， 正确版本为 `mysql-connector-java.5.1.30`
 + 允许远程连接
-```shell
-hive --service metastore
-hive --service hiveserver2
-```
+  ```shell
+  hive --service metastore
+  hive --service hiveserver2
+  ```
++ `mysql-connector-java`
+  ```java
+  stmt.excute(sql) // 没有 resultset
+  stmt.excuteQuery(sql) // 有 resultset
+  ```
+  执行建表、删除表操作时没有 `resultset` 而执行查询操作时有，要区分开来
