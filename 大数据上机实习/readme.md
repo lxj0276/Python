@@ -110,12 +110,13 @@
 + `hadoop` 在 `core-site.xml` 文件中 `master:9000`
 + **保证他们的端口一致** , 这样 `Hmaster` 进程才不会消失
 + **master info** 的端口需要配置
-```py
+```xml
   <property>
         <name>hbase.master.info.port</name>
         <value>60010</value>
   </property>
 ```
++ **zookeeper异常** 配置`hbase-site.xml`
 + **启动顺序**
 ```shell
 # 重启时
