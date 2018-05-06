@@ -198,3 +198,30 @@ cd $HBASE_HOME
   stmt.excuteQuery(sql) // 有 resultset
   ```
   执行建表、删除表操作时没有 `resultset` 而执行查询操作时有，要区分开来
++ 要导入 `.csv` 文件，需要在建表的时候设置 `FORMAT`
+  ```sql
+  CREATE EXTERNAL TABLE example (
+   organization  STRING,
+   order BIGINT,
+   created_on  TIMESTAMP,
+   issue_date TIMESTAMP,
+   qty  INT
+  )
+  ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+  WITH SERDEPROPERTIES (
+    "separatorChar" = "\t",
+    "quoteChar"     = "'"
+  )  
+  ```
++ 直接 `load` `.csv` 文件时要注意不能包含 `.csv` 头
+
+**pig**
++ 三种模式 `shell` `script` `embedded`
++ 先开启 `hadoop` , 等待退出安全模式后
++ `hadoop` 文件系统
+```shell
+hadoop fs -mkdir
+hadoop fs -ls
+hadoop fs -put
+```
++ 可以直接导入 `.csv` 文件
