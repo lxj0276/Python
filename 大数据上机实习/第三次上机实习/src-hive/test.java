@@ -22,5 +22,8 @@ public class test {
         String state = sb.toString();
         state = state.replaceAll(",\\s$", ")");
         System.out.println(state);
+
+        String test = "12345";
+        System.out.println(test.matches("^[0-9]+$"));
     }
 }

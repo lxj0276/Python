@@ -12,23 +12,37 @@ public class main {
         Connection conn = null;
         Statement stmt = null;
         String fileNameMovie = "tmdb_5000_movies.csv";
-
+        String fileNameCredits = "tmdb_5000_credits.csv";
+        String fileTest = "test.csv";
+        String file = fileNameMovie;
         HiveDemo hd = new HiveDemo();
         try{
             conn = hd.getConn();
             stmt = conn.createStatement();
             // connect mysql
 
-            CsvReader csvReader = new CsvReader(fileNameMovie);
-            String tableName = fileNameMovie.split("\\.")[0];
+            CsvReader csvReader = new CsvReader(file);
+            String tableName = file.split("\\.")[0];
             // read file
             csvReader.readHeaders();
             String[] headers = csvReader.getHeaders();
+            csvReader.readRecord();
+            String[] firstLine = csvReader.getValues();
 
             // jdbc
+            // drop table
             hd.dropTable(stmt, tableName);
-            hd.createTable(stmt, tableName, headers);
-
+            // create table
+            hd.createTable(stmt, tableName, headers, firstLine);
+            // show tables
+            hd.showTables(stmt, tableName);
+            String filepath = "/home/hadoop/Desktop/HiveDemo/nohead_" + file;
+            // load csv
+            hd.loadData(stmt, tableName, filepath);
+            // table head
+            hd.tableHead(stmt, tableName, headers.length);
+            // simple query
+            hd.selectData(stmt,tableName, headers.length, "budget1", "300000000");
         }catch (ClassNotFoundException e) {
             e.printStackTrace();
             System.exit(1);
@@ -50,41 +64,3 @@ public class main {
         }
     }
 }
-    /*
-    public static HBaseDemo hbd = null;
-
-    public static void readAndInsert(String filename) throws Exception{
-        try{
-            // create csv
-            CsvReader csvReader = new CsvReader(filename);
-            // read header
-            csvReader.readHeaders();
-            String[] headers = csvReader.getHeaders();
-
-            // create table and connect
-            hbd.createTable(filename.split("\\.")[0]);
-            hbd.connnectTable(filename.split("\\.")[0]);
-
-            int rowKey = 0;
-            while(csvReader.readRecord()){
-                hbd.putData(headers, csvReader.getValues(), rowKey);
-                rowKey++;
-            }
-
-        }catch (IOException ex){
-            System.err.println(ex.getMessage());
-        }
-
-        System.out.println("Insert Compelte!");
-    }
-
-    public static void main(String[] args) throws Exception{
-        hbd = new HBaseDemo();
-        String fileNameMovies = "tmdb_5000_movies.csv";
-        String fileNameCredits = "tmdb_5000_credits.csv";
-
-        // readAndInsert(fileNameMovies);
-        // readAndInsert(fileNameCredits);
-
-        hbd.get("tmdb_5000_movies", 1, "budget");
-    }*/

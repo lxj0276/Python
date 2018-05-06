@@ -16,129 +16,76 @@ public class HiveDemo {
     private  ResultSet res;
     private  final Logger log = Logger.getLogger(HiveDemo.class);
 
-    /*
-    public static void main(String[] args) {
-        Connection conn = null;
-        Statement stmt = null;
-        String fileNameMovie = "tmdb_5000_movies.csv";
-        try {
-            conn = getConn();
-            stmt = conn.createStatement();
-
-            // 第一步:存在就先删除
-            String tableName = dropTable(stmt);
-
-            // 第二步:不存在就创建
-            //createTable(stmt, tableName, fileNameMovie);
-
-            // 第三步:查看创建的表
-            showTables(stmt, tableName);
-
-            // 执行describe table操作
-            describeTables(stmt, tableName);
-
-            // 执行load data into table操作
-            loadData(stmt, tableName);
-
-            // 执行 select * query 操作
-            selectData(stmt, tableName);
-
-            // 执行 regular hive query 统计操作
-            countData(stmt, tableName);
-
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-            log.error(driverName + " not found!", e);
-            System.exit(1);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            log.error("Connection error!", e);
-            System.exit(1);
-        } finally {
-            try {
-                if (conn != null) {
-                    conn.close();
-                    conn = null;
-                }
-                if (stmt != null) {
-                    stmt.close();
-                    stmt = null;
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-    */
-
-    private void countData(Statement stmt, String tableName)
+    public void tableHead(Statement stmt, String tableName, int len)
             throws SQLException {
-        sql = "select count(1) from " + tableName;
+        sql = "select * from " + tableName + " limit 5";
         System.out.println("Running:" + sql);
         res = stmt.executeQuery(sql);
-        System.out.println("执行“regular hive query”运行结果:");
         while (res.next()) {
-            System.out.println("count ------>" + res.getString(1));
+            for(int i=0; i<len; ++i)
+                System.out.print(res.getString(i+1) + "\t");
+                System.out.print('\n');
         }
     }
 
-    private void selectData(Statement stmt, String tableName)
+    public void selectData(Statement stmt, String tableName, int len, String key, String value)
             throws SQLException {
-        sql = "select * from " + tableName;
+        sql = "select * from " + tableName + " where "+ key + " = " + value;
         System.out.println("Running:" + sql);
         res = stmt.executeQuery(sql);
-        System.out.println("执行 select * query 运行结果:");
         while (res.next()) {
-            System.out.println(res.getInt(1) + "\t" + res.getString(2));
+            for(int i=0; i<len; ++i)
+                System.out.print(res.getString(i+1) + "\t");
+            System.out.print('\n');
         }
     }
 
-    private void loadData(Statement stmt, String tableName)
+    public void loadData(Statement stmt, String tableName, String filepath)
             throws SQLException {
-        String filepath = "/home/hadoop01/data";
-        sql = "load data local inpath '" + filepath + "' into table "
-                + tableName;
+        StringBuilder sb = new StringBuilder();
+        sb.append("load data local inpath '" + filepath);
+        sb.append("' into table " + tableName);
+
+        sql = sb.toString();
         System.out.println("Running:" + sql);
-        res = stmt.executeQuery(sql);
+        stmt.execute(sql);
+        System.out.println("Success!");
     }
 
-    private void describeTables(Statement stmt, String tableName)
-            throws SQLException {
-        sql = "describe " + tableName;
-        System.out.println("Running:" + sql);
-        res = stmt.executeQuery(sql);
-        System.out.println("执行 describe table 运行结果:");
-        while (res.next()) {
-            System.out.println(res.getString(1) + "\t" + res.getString(2));
-        }
-    }
-
-    private void showTables(Statement stmt, String tableName)
+    public void showTables(Statement stmt, String tableName)
             throws SQLException {
         sql = "show tables '" + tableName + "'";
         System.out.println("Running:" + sql);
         res = stmt.executeQuery(sql);
-        System.out.println("执行 show tables 运行结果:");
         if (res.next()) {
             System.out.println(res.getString(1));
         }
     }
 
-    public void createTable(Statement stmt, String tableName, String[] headers)
+    public void createTable(Statement stmt, String tableName, String[] headers, String[] firstLine)
             throws SQLException {
 
         StringBuilder sb = new StringBuilder("(");
-        for(String s : headers){
-            sb.append(s);
-            sb.append(" string, ");
+        for(int i=0; i<headers.length; ++i){
+            sb.append(headers[i] + "1");
+            if(firstLine[i].matches("^[0-9]+$"))
+                sb.append(" int, ");
+            else
+                sb.append(" string, ");
         }
+
         String state = sb.toString();
         state = state.replaceAll(",\\s$", ")");
 
 
         sql = "create table "
                 + tableName
-                + " " + state + " row format delimited fields terminated by '\t'";
+                + " " + state
+                + " ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'\n";
+               // + "WITH SERDEPROPERTIES (\n"
+               // + "   \"quoteChar\"     = \"\\\"\"\n"
+               // + ")  ";
+        System.out.println("Running:" + sql);
         stmt.execute(sql);
         System.out.println("Table Created: " + tableName);
     }
