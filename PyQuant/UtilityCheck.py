@@ -75,6 +75,24 @@ def pd_check():
     matches.str.get(1)
     matches = matches.str[0]  # 取出匹配结果
 
+    # 分组聚合
+    grouped = result.groupby(result['year'])  # 分组
+    grouped.mean()  # 聚合
+
+    result['month'] = result.index.map(lambda x: x[5:7])
+    means = result.groupby([result['year'], result['month']]).mean()  # 两个分组，生成层次化索引
+    means.unstack()  # 纵向生成横向 DataFrame
+
+    grouped = result.groupby([result['year'], result['month']])
+    for (k1, k2), group in grouped:
+        # 分组迭代
+        group.size()
+
+    grouped.transform(lambda x:x-x.mean())
+
+    factor = pd.cut(result.open, 4)  # 分位数和桶分析
+    result.groupby(factor).apply(lambda x:x.min())
+
 
 def ts_check():
     pass
