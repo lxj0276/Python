@@ -2,6 +2,7 @@ import tushare as ts
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from dateutil.parser import parse
 
 
 def pd_check():
@@ -92,6 +93,8 @@ def pd_check():
 
     factor = pd.cut(result.open, 4)  # 分位数和桶分析
     result.groupby(factor).apply(lambda x:x.min())
+    factor = pd.qcut(result['open'], 10, labels=False)
+
 
 
 def ts_check():

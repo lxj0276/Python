@@ -9,3 +9,8 @@
 ## 编程手记
 + `type` 检查类型
 + `.map()` 和 `.apply()` 的区别
++ 生成 `datetime` 类型
+    ```py
+    from dateutil.parser import parse
+    parse('2011-10-01')
+    ```
