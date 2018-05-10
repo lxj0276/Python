@@ -1,58 +1,87 @@
 import pandas as pd
 import numpy as np
+import statsmodels.api as sm
+
 
 class Quadratic():
-    def __init__(self, x, returns):
+    def __init__(self, x, returns, all_factors, market_factors):
         """
-        初始化
-        :param x:1-T期，股票池A,B,C...到因子 f1,f2,f3...上的因子暴露
-        :param returns:1-T期，股票池A,B,C...的收益率
+        usage: 初始化
+        :param x:DataFame, 1-T期，股票池A,B,C...到因子 f1,f2,f3...上的因子暴露
+        :param returns:Series, 1-T期，股票池A,B,C...的收益率
+        :param all_factors:List
+        :param market_factors:List
         """
         self.x = x
-        self.returns = returns
-        self.hist_factor_returns = list()
-        self.predict_factor_returns = list()
+        self.x['returns'] = returns
+        self.all_factors = all_factors
+        self.market_factors = market_factors
+        # self.hist_factor_returns = list()
+        # self.predict_factor_returns = list()
         self.predict_stock_returns = list()
         self.predict_factor_loading = pd.DataFrame()
-        self.returns_residuals = pd.DataFrame()
+        # self.returns_residuals = pd.DataFrame()
         self.risk_structure = pd.DataFrame()
 
-    def grading(self, start, end):
+    def grading(self):
         """
-        将因子暴露打分
-        :param start: 市场因子的起始索引位置
-        :param end: 市场因子的结束索引位置
+        usage: 将因子暴露打分
         """
-        rank = self.x.apply(lambda x:x[start:end].rank(method='first'), axis=1)
-        self.x.iloc[:,start:end] = rank
+        rank = self.x.apply(lambda x:x[self.market_factors].rank(method='first'), axis=1)
+        self.x[self.market_factors] = rank
 
-    def cal_hist_factor_returns(self):
+    def get_hist_residuals(self, results):
         """
-        计算往期因子收益率
+        usage: 计算残差
+        :param results: 往期因子收益率
+        :return: 残差
         """
-        grouped = self.x.groupby(self.x['date'])
-        self.hist_factor_returns = grouped.apply()  # 回归
-        self.hist_returns_residuals = None  # 收集残差
+        right_cols = results.columns = results.columns + '_h'
+        data_merged = pd.merge(self.x, results, left_on='Date', right_index=True)
+        grouped = data_merged.groupby(self.x['Date'])
+        func = lambda x:x['returns']-(x[self.all_factors]*x[right_cols]).sum(axis=1)  # 计算残差
+        results_residuals = grouped.apply(func)
 
-    def predict_factor_returns(self):
+        return results_residuals
+
+    def get_hist_factor_returns(self):
         """
-        计算预期因子收益率
+        usage: 计算往期因子收益率
+        """
+        # 回归得到往期因子收益
+        grouped = self.x.groupby(self.x['Date'])
+        func = lambda x: sm.OLS(x['returns'], x[self.all_factors]).fit().params  # OLS
+        results = grouped.apply(func)
+
+        return results
+
+    def predict_factor_returns(self, factor_returns, method):
+        """
+        usage: 计算预期因子收益率
+        :param factor_returns: DataFrame, 因子历史收益矩阵
+        :param method: str, 估计 T+1 期收益的方法
         """
         pass
 
     def predict_stock_returns(self):
         """
-        计算预期股票收益率载荷
+        usage: 计算预期股票收益率
         """
         pass
 
-    def cal_risk_structure(self):
+    def get_risk_structure(self):
         """
-        计算市场风险结构矩阵 V
+        usage: 计算市场风险结构矩阵 V
         """
-        factor_cov = np.cov(self.hist_factor_returns)  # 计算往期因子收益率的协方差矩阵
+        #  计算往期因子收益并获取残差矩阵
+        hist_fac_ret = self.get_hist_factor_returns()
+        hist_res = self.get_hist_residuals(hist_fac_ret)
+
+        # 计算往期因子收益率和股票残差的协方差矩阵
+        factor_cov = np.cov(hist_fac_ret)
         factor_nums = np.alen(factor_cov)
-        residuals_cov = np.cov(self.returns_residuals)
+        residuals_cov = np.cov(hist_res)
+
         stocks = self.x['stocks'].unique()
         self.risk_structure = pd.DataFrame(np.ones(len(stocks)*len(stocks)), columns=stocks)
         for i in range(len(stocks)):
