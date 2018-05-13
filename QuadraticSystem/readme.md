@@ -43,3 +43,19 @@ model = sm.OLS(Y,X)
 results = model.fit()
 results.params
 ```
+
+## cvxopt
+**安装**
++ 卸载 `pip uninstall numpy`
++ 安装 `cvxopt` `cvxopt-1.1.9-cp36-cp36m-win_amd64.whl`
++ 安装 `numpy + mkl` `numpy-1.13.3+mkl-cp36-cp36m-win_amd64.whl`
++ 可以直接使用 `pip install` 命令完成上述安装
+
+**matrix**
++ `Q = 2 * matrix([[2, .5], [.5, 1]])`
+  默认列表中每一个 `[]`， 都是矩阵中的一列
++ `A = matrix([1.0, 1.0], (1, 2))`
+  第二个参数的元组则给出了矩阵的形式，这里是 **1*2 即一行两列**
++ 要解的 `x` 向量为 **列向量**， 方便添加约束
++ 将 `numpy` 的 `ndarray` 直接转换为 `matrix` 时，不会按照原生列表的方式解析，而是遵循 `numpy` 的方式。
++ `pandas` 的 `Dataframe` 不能直接转换为 `matrix`， 需要先经过 `np.asmatrix` 或 `np.asarray` 转化为 `numpy` 对象
