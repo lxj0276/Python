@@ -62,9 +62,7 @@ class Optimus():
 
         def F(x=None, z=None):
             if x is None:
-                return 1, matrix(0.5, (len(r), 1))
-            if min(x) <= 0.0:
-                return None
+                return 1, matrix(0.0, (len(r), 1))
             f = x.T * V * x - sigma2
             Df = x.T * (V + V.T)
             if z is None:
@@ -86,7 +84,7 @@ class Optimus():
 
         # sum = 1
         A = matrix(np.ones(num)).T
-        b = matrix(1.0, (1,1))
+        b = matrix(0.0, (1,1))
 
         # hedge industry risk
         if industry is not None:
@@ -277,9 +275,7 @@ if __name__ == '__main__':
     rs = op.risk_structure(hist_factor_returns=hfr, hist_residuals=hr, predict_factor_loadings=pfl)
     print("rs:")
     print(rs)
-
     B = np.ones(3)/3
-
-    sol = op.max_returns(psr, rs, 80, B, 0.5)
+    sol = op.max_returns(psr, rs, 10, B, 0.5)
     print("sol:")
     print(sol)
