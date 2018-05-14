@@ -1,5 +1,7 @@
 # 编程手记
 **函数类命名不要太详细太冗杂，关键信息相信就可以了**
+## Qudratic
+**注意日期排序**
 
 ## Pandas
 **索引**
@@ -26,7 +28,7 @@
       except StopIteration:
         pass
   ```
-
++ `applymap` 元素级的运算
 **时间序列索引**
 + `pd.to_datetime()`
 + `dateutil.parser.parse`
@@ -34,6 +36,10 @@
 **pandas cumulative function**
 + `pd.expanding_apply()`
 + `functools.reduce(lambda x,y:0.5*x+0.5*y, s)`
+
+**ewma**
++ `pd.ewma` 有 `alpha` 等参数
++ `x.ewm().mean()` 可以用 **lambda表达式** 传入 `apply` 方法
 
 ## Statsmodels
 **OLS**
@@ -59,3 +65,7 @@ results.params
 + 要解的 `x` 向量为 **列向量**， 方便添加约束
 + 将 `numpy` 的 `ndarray` 直接转换为 `matrix` 时，不会按照原生列表的方式解析，而是遵循 `numpy` 的方式。
 + `pandas` 的 `Dataframe` 不能直接转换为 `matrix`， 需要先经过 `np.asmatrix` 或 `np.asarray` 转化为 `numpy` 对象
+
+**优化求解**
++ 二次规划问题 `solver.qp`
++ 目标为线性函数，约束为二次型 `solver.cpl` **注意要有解**
