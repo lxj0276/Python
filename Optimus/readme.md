@@ -1,5 +1,14 @@
 # 编程手记
 **函数类命名不要太详细太冗杂，关键信息相信就可以了**
+
+## import
+引入自己写的模块
+```py
+import sys;  
+sys.path.append("路径名")  
+import model
+```
+
 ## Qudratic
 **注意日期排序**
 

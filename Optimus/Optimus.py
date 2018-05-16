@@ -12,10 +12,13 @@ class Optimus():
         :param factor: List, factors
         """
         self.x = x
+        self.x['market'] = 1.0  # market factor
         self.names = {'date': 'Date', 'returns': 'Return',
                       'company': 'CompanyCode', 'factor': factor,
+                      'market':'market',
                       'industry': [i for i in factor if self.is_industry(x[i])],
-                      'market': [i for i in factor if not self.is_industry(x[i])]}
+                      'style': [i for i in factor if not self.is_industry(x[i])]}
+        self.names['factor'].append('market')
 
     @staticmethod
     def is_industry(col):
@@ -34,26 +37,16 @@ class Optimus():
         return reduce(lambda y, z: (1 - weight) * y + weight * z, x)
 
     @staticmethod
-    def predict_stock_returns(predict_factor_loadings, predict_factor_returns):
-        """
-        predict stock returns in period T+1
-        :param predict_factor_loadings: factor loadings in period T+1
-        :param predict_factor_returns: factor returns in period T+1
-        :return: stock returns in period T+1
-        """
-        return predict_factor_loadings.apply(lambda x: x * predict_factor_returns, axis=1).sum(axis=1)
-
-    @staticmethod
     def max_returns(returns, risk_structure, sigma2, B, up, industry=None, factor=None, xk=None):
         """
         calculate the best portfolios, maximize returns give the risk sigma2
         :param returns: future stock returns
         :param risk_structure: risk structure
-        :param sigma2: Double, risk
+        :param sigma2: Double, upper bound of risk
         :param B: Vector, Basic portfolio
         :param up: Double, upper bound of weight
-        :param industry: DataFrame, dummy variables for industry for N companies, control industry risk if not none
-        :param factor: DataFrame, future factor loadings, control factor risk if not none
+        :param industry: DataFrame, dummy variables for industry for N companies, control industry risk
+        :param factor: DataFrame, future factor loadings, control factor risk
         :param xk: Double, upper bound of factor risk
         :return: optimal portfolio
         """
@@ -100,10 +93,10 @@ class Optimus():
     def set_names(self, date=None, returns=None, company=None, factor=None):
         """
         set the column names that will be used in calculation
-        :param date: the name of the date column in raw data
-        :param returns: the name of the returns column in raw data
-        :param company: the name of the company column in raw data
-        :param factor: the name of factors columns in raw data
+        :param date: the name of the date column
+        :param returns: the name of the returns column
+        :param company: the name of the company column
+        :param factor: the name of factor columns
         """
         if date:
             self.names['date'] = date
@@ -112,16 +105,17 @@ class Optimus():
         if company:
             self.names['company'] = company
         if factor:
-            self.names['factor'] = factor
             self.names['industry'] = [i for i in factor if self.is_industry(self.x[i])]
-            self.names['market'] = [i for i in factor if not self.is_industry(self.x[i])]
+            self.names['style'] = [i for i in factor if not self.is_industry(self.x[i])]
+            factor.append('market')
+            self.names['factor'] = factor
 
     def rank_factors(self):
         """
         rank the market factors in need in the following calculation
         """
-        factor = self.names['market']
-        rank = self.x[factor].rank(method='dense')
+        factor = self.names['style']
+        rank = self.x[factor].rank()
         self.x[factor] = rank
         mean = self.x[factor].mean()
         std = self.x[factor].std()
@@ -134,7 +128,7 @@ class Optimus():
         :return: DataFrame with index as dates and columns as companies
         """
         # group by date
-        date, returns, company, factor, _, _ = self.names.values()
+        date, returns, company, factor = list(self.names.values())[:4]
         grouped = self.x.groupby(self.x[date])
 
         # get residuals respectively
@@ -143,10 +137,10 @@ class Optimus():
         try:
             g = (list(factor_returns[factor].iloc[i]) for i in range(len(factor_returns)))
             results_residuals = pd.DataFrame([list(f(group, g)) for _, group in grouped])
-            results_residuals.columns = self.x[company].unique()
         except StopIteration:
             pass
 
+        results_residuals.columns = self.x[company].unique()
         return results_residuals.applymap(lambda x:0.0 if x<0.01 else x)
 
     def hist_factor_returns(self):
@@ -155,7 +149,8 @@ class Optimus():
         :return: DataFrame with index as dates and columns as factors
         """
         # divide the DataFrame into T periods
-        date, returns, _, factor, _, _ = self.names.values()
+        date, returns, _, factor = list(self.names.values())[:4]
+        print(factor)
         grouped = self.x.groupby(self.x[date])
 
         # T OLS on T groups
@@ -187,7 +182,7 @@ class Optimus():
         :param arg: additional parameter used in prediction
         :return: DataFrame with index as company and columns as factors
         """
-        _, _, company, factor, _, _ = self.names.values()
+        company, factor = list(self.names.values())[2:4]
         if method == 'average':
             predicts = self.x[factor].groupby(self.x[company]).mean()
         elif method == 'ewma':
@@ -196,6 +191,15 @@ class Optimus():
         else:
             raise ValueError("predict_factor_loadings:undefined method" + method)
         return predicts
+
+    def predict_stock_returns(self, predict_factor_loadings, predict_factor_returns):
+        """
+        predict stock returns in period T+1
+        :param predict_factor_loadings: factor loadings in period T+1
+        :param predict_factor_returns: factor returns in period T+1
+        :return: stock returns in period T+1
+        """
+        return predict_factor_loadings.apply(lambda x: x * predict_factor_returns, axis=1).sum(axis=1)
 
     def risk_structure(self, hist_factor_returns, hist_residuals, predict_factor_loadings):
         """
@@ -276,6 +280,6 @@ if __name__ == '__main__':
     print("rs:")
     print(rs)
     B = np.ones(3)/3
-    sol = op.max_returns(psr, rs, 10, B, 0.5)
+    sol = op.max_returns(psr, rs, 1, B, 0.5)
     print("sol:")
     print(sol)
