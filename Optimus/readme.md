@@ -69,6 +69,7 @@ def is_industry(col):
         return predicts
 ```
 + `risk_structure` 不需要考虑股票的协方差
++ 回归时可能会出现多重共线性
 
 ## numpy
 + `np.dot` 可以用于矩阵乘法，但是只限于两个矩阵相乘
@@ -76,6 +77,9 @@ def is_industry(col):
 + `np.asmatrix` 后有了 `T` 属性用于转置
 
 ## Pandas
+**options**
++ `pd.set_options()`
+
 **索引**
 + `Index` 有 `append`,`delete`,`drop`,`insert` 以及一些集合方法
 + 利用pandas的算术功能时，**索引自动对齐** 会影响道计算结果，应该去除这个影响

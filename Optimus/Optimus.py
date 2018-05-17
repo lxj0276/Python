@@ -11,18 +11,15 @@ class Optimus():
         :param x: DataFame, T periods, The factor loadings of companies A,B,C... on factors f1,f2,f3...
         :param factor: List, factors
         """
-        self.x = x
-        self.x['market'] = 1.0  # market factor
+        self.x = pd.DataFrame(x)
         self.names = {'freq': 'Date', 'returns': 'Return',
-                      'company': 'CompanyCode', 'factor': factor,
-                      'market':'market',
+                      'company': 'CompanyCode', 'factor': list(factor),
                       'industry': [i for i in factor if self.is_industry(x[i])],
                       'style': [i for i in factor if not self.is_industry(x[i])]}
-        self.names['factor'].append('market')
 
     @staticmethod
     def is_industry(col):
-        if {i for i in (0, 1)}.issuperset(set(col)):
+        if len(set(col)) <= 2:
             return True
         return False
 
@@ -84,6 +81,7 @@ class Optimus():
             if z is None:
                 return f, Df
             return f, Df, z[0, 0] * (V + V.T)
+
         # Basic portfolio Bound
         G1 = matrix(np.diag(np.ones(num) * -1))
         h1 = matrix(list(B))
@@ -100,7 +98,7 @@ class Optimus():
 
         # sum = 0.0
         A = matrix(np.ones(num)).T
-        b = matrix(0.0, (1,1))
+        b = matrix(0.0, (1, 1))
 
         # hedge industry risk
         if industry is not None:
@@ -130,8 +128,7 @@ class Optimus():
         if factor:
             self.names['industry'] = [i for i in factor if self.is_industry(self.x[i])]
             self.names['style'] = [i for i in factor if not self.is_industry(self.x[i])]
-            factor.append('market')
-            self.names['factor'] = factor
+            self.names['factor'] = list(factor)
 
     def rank_factors(self):
         """
@@ -142,7 +139,7 @@ class Optimus():
         self.x[factor] = rank
         mean = self.x[factor].mean()
         std = self.x[factor].std()
-        self.x[factor] = self.x[factor].apply(lambda x:(x-mean)/std, axis=1)
+        self.x[factor] = self.x[factor].apply(lambda x: (x - mean) / std, axis=1)
 
     def hist_factor_returns(self):
         """
@@ -179,15 +176,20 @@ class Optimus():
 if __name__ == '__main__':
     data = pd.read_csv('expo_test.csv')
 
-    factors = ['PE', 'PB', 'PS', 'ROE', 'ROA']
-    op = Optimus(data, factors)
+    factors = list(data.columns.drop(['Ticker', 'CompanyCode', 'TickerName', 'SecuCode', 'IndustryName',
+                                      'CategoryName', 'Date', 'Month', 'Return', 'PCF']))
 
+    factors.remove('AnalystROEAdj')
+    factors.remove('FreeCashFlow')
+
+    op = Optimus(data, factors)
+    op.set_names(freq='Month')
     print(op.names['factor'])
+    hfr = op.hist_factor_returns()
+    print(hfr)
+
     months = data['Month'].unique()
     factors_T = data[data['Month'] == months[-1]]
-    factors_T['market'] = 1.0
-    print(op.hist_factor_returns())
-    hfr = op.hist_factor_returns()
     pfr = op.predict_factor_returns(hfr, 'ewma', 0.5)
     print(pfr)
     factor_loading = factors_T[factors]
@@ -198,7 +200,7 @@ if __name__ == '__main__':
     rs = op.risk_structure(hfr, factor_loading)
     print(rs)
     B = np.ones(288)/288
-    sol = op.max_returns(psr, rs, 0.001, B, 0.05)
+    sol = op.max_returns(psr, rs, 0.000001, B, 0.05)
     print(sol)
     print(({i for i in sol if i>0}))
     # data cleaning
