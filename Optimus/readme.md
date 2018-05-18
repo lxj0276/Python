@@ -75,8 +75,17 @@ def is_industry(col):
 + `np.dot` 可以用于矩阵乘法，但是只限于两个矩阵相乘
 + `np.cov` 默认是行与行之间求协方差，要求列的协方差需要 **先转置**
 + `np.asmatrix` 后有了 `T` 属性用于转置
++ `np.append` 用于往 `array` 里面添加元素， 记得 **往回赋值**
 
 ## Pandas
+**画图**
+```py
+    import matplotlib.pyplot as plt
+    s = pd.Series(r, index=sigma)
+    s.plot()
+    plt.show()
+```
+
 **options**
 + `pd.set_options()`
 

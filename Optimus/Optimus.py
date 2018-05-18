@@ -1,7 +1,10 @@
+import sys
+import warnings
+from functools import reduce
+
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
-from functools import reduce
 from cvxopt import matrix, solvers
 
 
@@ -16,6 +19,15 @@ class Optimus():
                       'company': 'CompanyCode', 'factor': list(factor),
                       'industry': [i for i in factor if self.is_industry(x[i])],
                       'style': [i for i in factor if not self.is_industry(x[i])]}
+        if True not in {self.is_const(x[i]) for i in list(factor)}:
+            warnings.warn("Warning in Optimus(): Missing one column as the market factor, "
+                          "try to add one column as a single-value column like 1.0")
+
+    @staticmethod
+    def is_const(col):
+        if len(set(col)) == 1:
+            return True
+        return False
 
     @staticmethod
     def is_industry(col):
@@ -151,10 +163,14 @@ class Optimus():
         grouped = self.x.groupby(self.x[freq])
 
         # T OLS on T groups
-        def f(x): return sm.OLS(x[returns], x[factor]).fit().params
-        results = grouped.apply(f)
-
-        return results.dropna()
+        try:
+            def f(x): return sm.OLS(x[returns], x[factor]).fit().params
+            results = grouped.apply(f)
+        except np.linalg.linalg.LinAlgError:
+            print("Error in hist_factor_returns: Check if the variables are suitable in OLS")
+            sys.exit(1)
+        else:
+            return results.dropna()
 
     def predict_factor_returns(self, factor_returns, method, arg=None):
         """
@@ -192,17 +208,30 @@ if __name__ == '__main__':
     factors_T = data[data['Month'] == months[-1]]
     pfr = op.predict_factor_returns(hfr, 'ewma', 0.5)
     print(pfr)
+
     factor_loading = factors_T[factors]
     factor_loading.index = factors_T['CompanyCode']
     print(factor_loading)
+
     psr = op.predict_stock_returns(factor_loading, pfr)
     print(psr)
+
     rs = op.risk_structure(hfr, factor_loading)
     print(rs)
+
     B = np.ones(288)/288
-    sol = op.max_returns(psr, rs, 0.000001, B, 0.05)
-    print(sol)
-    print(({i for i in sol if i>0}))
+
+    sigma = np.arange(1, 17) * 0.01
+    sigma = np.append(np.arange(1, 10) * 0.001, sigma)
+    sigma = np.append(np.arange(1, 10) * 0.0001, sigma)
+    print(sigma)
+    r = [sum(np.array(psr) * list(op.max_returns(psr, rs, i, B, 0.05))) for i in sigma]
+    print(r)
+
+    import matplotlib.pyplot as plt
+    s = pd.Series(r, index=sigma)
+    s.plot()
+    plt.show()
     # data cleaning
     """
     companies = data.groupby(data['Date']).apply(lambda x:pd.Series(x['CompanyCode']))
