@@ -1,6 +1,21 @@
 # 编程手记
 **函数类命名不要太详细太冗杂，关键信息相信就可以了**
 
+## Python
++ `Warnings`
+```py
+import warnings
+warnings.warn("")
+```
++ `assert` 关键词，用来确信某一表达式是真的，在为假时报 `AssertionError`
+```py
+assert len(mylist) >= 1
+```
++ `exec`
+```py
+exec 'print "Hello World"'
+```
+
 ## import
 引入自己写的模块
 ```py
