@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 from cvxopt import matrix, solvers
-
+# to rightly install cvxopt see:https://blog.csdn.net/qq_32106517/article/details/78746517
 
 class Optimus():
     def __init__(self, x, factor):
@@ -195,52 +195,51 @@ if __name__ == '__main__':
     factors = list(data.columns.drop(['Ticker', 'CompanyCode', 'TickerName', 'SecuCode', 'IndustryName',
                                       'CategoryName', 'Date', 'Month', 'Return', 'PCF']))
 
+    # remove redundant variables
     factors.remove('AnalystROEAdj')
     factors.remove('FreeCashFlow')
 
+    # create instance
     op = Optimus(data, factors)
     op.set_names(freq='Month')
     print(op.names['factor'])
+
+    # get history factor returns
     hfr = op.hist_factor_returns()
     print(hfr)
 
+    # get factor loadings at period T
     months = data['Month'].unique()
     factors_T = data[data['Month'] == months[-1]]
-    pfr = op.predict_factor_returns(hfr, 'ewma', 0.5)
-    print(pfr)
-
     factor_loading = factors_T[factors]
     factor_loading.index = factors_T['CompanyCode']
     print(factor_loading)
 
+    # predict factor returns at period T+1
+    pfr = op.predict_factor_returns(hfr, 'ewma', 0.5)
+    print(pfr)
+
+    # predict stock returns
     psr = op.predict_stock_returns(factor_loading, pfr)
     print(psr)
 
+    # get risk structure
     rs = op.risk_structure(hfr, factor_loading)
     print(rs)
 
+    # construct risk sequence
     B = np.ones(288)/288
-
     sigma = np.arange(1, 17) * 0.01
     sigma = np.append(np.arange(1, 10) * 0.001, sigma)
     sigma = np.append(np.arange(1, 10) * 0.0001, sigma)
     print(sigma)
+
+    # optimize
     r = [sum(np.array(psr) * list(op.max_returns(psr, rs, i, B, 0.05))) for i in sigma]
     print(r)
 
+    # plot
     import matplotlib.pyplot as plt
     s = pd.Series(r, index=sigma)
     s.plot()
     plt.show()
-    # data cleaning
-    """
-    companies = data.groupby(data['Date']).apply(lambda x:pd.Series(x['CompanyCode']))
-    s1 = reduce(lambda x, y: set(x).intersection(set(y)), (companies.iloc[i] for i in range(len(companies))))
-    filter1 = pd.Series([i in s1 for i in data['CompanyCode']])
-    data = data[filter1]
-
-    dates = data.groupby(data['CompanyCode']).apply(lambda x: pd.Series(x['Date']))
-    s2 = reduce(lambda x, y: set(x).intersection(set(y)), (dates.iloc[i] for i in range(len(companies))))
-    filter2 = pd.Series([i in s2 for i in data['Date']])
-    data = data[filter2]
-    """
