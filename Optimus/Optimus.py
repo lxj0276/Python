@@ -5,8 +5,10 @@ from functools import reduce
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
+from statsmodels.tsa.filters import hp_filter
 from cvxopt import matrix, solvers
 # to rightly install cvxopt see:https://blog.csdn.net/qq_32106517/article/details/78746517
+
 
 class Optimus():
     def __init__(self, x, factor):
@@ -123,6 +125,41 @@ class Optimus():
         sol = solvers.cpl(r, F, G, h, A=A, b=b)
         return sol['x']
 
+    @staticmethod
+    def min_risk(returns, risk_structure, target_return, up):
+        """
+        Given the target-return, minimize risk
+        :param returns: stock returns in T+1
+        :param risk_structure: risk structure
+        :param target_return: target return
+        :param up: upper bound of weight
+        :return: portfolio weights
+        """
+        P = matrix(np.asarray(risk_structure))
+        num = len(returns)
+        q = matrix(np.zeros(num))
+
+        # upper weight
+        G1 = matrix(np.diag(np.ones(num)))
+        h1 = matrix(up, (num, 1))
+        # target return
+        G2 = matrix(np.asarray(returns)).T * -1
+        h2 = matrix(-1*target_return, (1,1))
+        G, h = matrix([G1, G2]), matrix([h1, h2])
+        # sum = 1.0
+        A = matrix(np.ones(num)).T
+        b = matrix(1.0, (1, 1))
+
+        solvers.options['show_progress'] = False
+        solvers.options['maxiters'] = 1000
+        try:
+            sol = solvers.qp(P, q, G, h, A, b)
+        except ValueError as e:
+            print("Error in min_risk():make sure your equation can be solved")
+            sys.exit(1)
+        else:
+            return sol['x']
+
     def set_names(self, freq=None, returns=None, company=None, factor=None):
         """
         set the column names that will be used in calculation
@@ -184,6 +221,11 @@ class Optimus():
             predicts = factor_returns.mean()
         elif method == 'ewma':
             predicts = factor_returns.apply(self.ewma, weight=arg)
+        elif method == 'hpfilter':
+            def f(x):
+                _, trend =  hp_filter.hpfilter(x, 129600)
+                return trend.iloc[-1]
+            predicts = factor_returns.apply(f)
         else:
             raise ValueError("predict_factor_returns:undefined method：" + method)
         return predicts
@@ -216,7 +258,7 @@ if __name__ == '__main__':
     print(factor_loading)
 
     # predict factor returns at period T+1
-    pfr = op.predict_factor_returns(hfr, 'ewma', 0.5)
+    pfr = op.predict_factor_returns(hfr, 'hpfilter')
     print(pfr)
 
     # predict stock returns
@@ -243,3 +285,6 @@ if __name__ == '__main__':
     s = pd.Series(r, index=sigma)
     s.plot()
     plt.show()
+
+    print(sum(np.array(psr) * list(op.min_risk(psr, rs, 0.5, 0.001))))
+
