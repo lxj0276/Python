@@ -50,8 +50,7 @@ def model2(sigma2):
     sol = solvers.cpl(r, F, G, h, dims, A, b)
     return sol['x']
 
-
-if __name__ == '__main__':
+def model3():
     from cvxopt import matrix, log, div, spdiag, solvers
 
     def F(x=None, z=None):
@@ -64,13 +63,54 @@ if __name__ == '__main__':
         H = spdiag(2 * z[0] * div(1 + u ** 2, u ** 2))
         return val, Df, H
 
-
     G = matrix([[0., -1., 0., 0., -21., -11., 0., -11., 10., 8., 0., 8., 5.],
                 [0., 0., -1., 0., 0., 10., 16., 10., -10., -10., 16., -10., 3.],
                 [0., 0., 0., -1., -5., 2., -17., 2., -6., 8., -17., -7., 6.]])
     h = matrix([1.0, 0.0, 0.0, 0.0, 20., 10., 40., 10., 80., 10., 40., 10., 15.])
     dims = {'l': 0, 'q': [4], 's': [3]}
-    sol = solvers.cp(F, G, h, dims)
-    print(sol['x'])
+    return solvers.cp(F, G, h, dims)['x']
 
-    print(model2(3))
+
+def model4(n, r, B, V):
+    mat = V.T + V
+
+    def F(x=None, z=None):
+        if x is None:
+            return 0, matrix(1.0, (n,1))
+        if x.T * V * x == 0:
+            return None
+        risk = x.T * V * x
+        alpha = x.T * r - B.T * r
+        f = - alpha * risk**-0.5
+        Df = (- risk**-0.5 * r + 0.5 * risk ** -1.5 * mat * x * alpha).T
+        if z is None:
+            return f, Df
+
+        part1 = 0.5 * r * x.T * mat * risk **-1.5
+        part2 = -0.75 * mat * x * alpha * x.T * mat * risk**-2.5 + 0.5 * (mat * x * r.T + mat * alpha) * risk**-1.5
+        H = z[0] * (part1 + part2)
+        return f, Df, H
+
+    G1 = matrix(np.diag([-1.0, -1.0]))
+    h1 = matrix([0.0, 0.0])
+    G2 = matrix([0.0, 1.0]).T
+    h2 = matrix(0.5, (1, 1))
+    G = matrix([G1, G2])
+    h = matrix([h1, h2])
+    A = matrix(np.ones(n)).T
+    b = matrix(1.0, (1, 1))
+    print(G)
+    print(h)
+
+    return solvers.cp(F, G, h, A=A, b=b)['x']
+
+
+if __name__ == '__main__':
+    n = 2
+    r = matrix([0.5, 1.0])
+    B = matrix([0.0, 0.0])
+    V = matrix([[1.0, 0.0], [0.0, 1.0]])
+    print(r)
+    print(B)
+    print(V)
+    print(model4(n,r,B,V))
