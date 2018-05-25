@@ -99,8 +99,6 @@ def model4(n, r, B, V):
     h = matrix([h1, h2])
     A = matrix(np.ones(n)).T
     b = matrix(1.0, (1, 1))
-    print(G)
-    print(h)
 
     return solvers.cp(F, G, h, A=A, b=b)['x']
 
