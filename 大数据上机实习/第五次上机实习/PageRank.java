@@ -2,6 +2,9 @@ package org.apache.hadoop.examples;
 import java.net.URI;
 import java.io.IOException;
 import java.io.File;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -71,6 +74,33 @@ public class PageRank {
 		}
 	}
 
+	public static ArrayList<Float> readList(FileSystem fs, Path p) throws Exception{
+		BufferedReader file = new BufferedReader(new InputStreamReader(fs.open(p)));
+		ArrayList<Float> l = new ArrayList<>();
+		String line = file.readLine();
+		while(line != null) {
+			line = line.split("\t")[1];
+			Float f = Float.parseFloat(line.split(",")[0]);
+			l.add(f);
+			line = file.readLine();
+		}
+		return l;
+	}
+	
+	public static float distance(ArrayList<Float> l1, ArrayList<Float> l2) {
+		float f = 0;
+		for(int i=0; i<l1.size();++i) {
+			f += (l1.get(i) - l2.get(i)) * (l1.get(i) - l2.get(i));
+		}
+		return f;
+	}
+	public static boolean compare(FileSystem fs, Path p1, Path p2, float precision) throws Exception{
+		ArrayList<Float> l1 = readList(fs, p1);
+		ArrayList<Float> l2 = readList(fs, p2);
+		float f = distance(l1, l2);
+		return f < precision;
+	}
+	
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
 		FileSystem fs = FileSystem.get(conf);
@@ -83,7 +113,7 @@ public class PageRank {
 		int exit_status=0;	
 		fs.delete(output, true);
 		
-		for(int i=0;i<2;++i) {
+		for(int i=0; i<7; i++) {
 			System.out.println("task:" + Integer.toString(i));
 			Job job = new Job(conf, "word count");
 			job.setJarByClass(PageRank.class);
@@ -101,6 +131,11 @@ public class PageRank {
 			job.submit();
 			while(!job.isComplete()) continue;
 			job.killJob();
+			
+			boolean b = compare(fs, pi, po, 0.01f);
+			System.out.println(b);
+			if(b)
+				break;
 			
 			// move file		
 			FileUtil.copy(fs, po, fs, pi, true,true,conf);
