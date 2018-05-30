@@ -64,9 +64,10 @@ $\dfrac{dRSS}{d\beta}=-2X^T(y-X\beta)$
 $\hat{\beta}^{ridge}=\hat{\beta}/(1+\lambda)$
 
 要求自由度的话，先做 **奇异值分解SVD**
-+ $X = UDV^T$ 其中D是对角矩阵
++ $X = UDV^T$ 其中D是 `M*N` 阶对角矩阵
 + $df(\lambda)=tr[X(X^TX+\lambda I)^{-1}X^T]$
 + $=\sum\limits^{p}_{j=1}\dfrac{d^2_j}{d^2_j+\lambda}$
++ `U` 和 `V` 都满足 $UU^T=I,VV^T=I$
 
 #### Lasso
 与岭回归稍有不同
@@ -77,3 +78,9 @@ $subject to \sum\limits_{j=1}^{p}|\beta_j| \leq t$
 #### Principal Components Regression
 + $\hat{y}^{pcr}_{(M)}=\bar{y}1 + \sum\limits_{m=1}^{M}\hat{\theta}_mz_m$
 $z_m=Xv_m$ 是 `derived inputs`
++ $z_m=Xv_m=Ud_m$
+证明：
+$X=UDV^T$
+$XV=UDV^TV$
+$XV=UD$
+$Xv_m=Ud_m$

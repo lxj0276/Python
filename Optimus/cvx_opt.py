@@ -50,6 +50,7 @@ def model2(sigma2):
     sol = solvers.cpl(r, F, G, h, dims, A, b)
     return sol['x']
 
+
 def model3():
     from cvxopt import matrix, log, div, spdiag, solvers
 
@@ -91,12 +92,9 @@ def model4(n, r, B, V):
         H = z[0] * (part1 + part2)
         return f, Df, H
 
-    G1 = matrix(np.diag([-1.0, -1.0]))
-    h1 = matrix([0.0, 0.0])
-    G2 = matrix([0.0, 1.0]).T
-    h2 = matrix(0.5, (1, 1))
-    G = matrix([G1, G2])
-    h = matrix([h1, h2])
+    G1 = matrix(np.diag(np.ones(n) * -1))
+    h1 = matrix(np.zeros(n))
+    G, h = G1, h1
     A = matrix(np.ones(n)).T
     b = matrix(1.0, (1, 1))
 
@@ -104,10 +102,10 @@ def model4(n, r, B, V):
 
 
 if __name__ == '__main__':
-    n = 2
-    r = matrix([0.5, 1.0])
-    B = matrix([0.0, 0.0])
-    V = matrix([[1.0, 0.0], [0.0, 1.0]])
+    n = 288
+    r = matrix(np.ones(n))
+    B = matrix(np.zeros(n))
+    V = matrix(np.diag(np.ones(n)))
     print(r)
     print(B)
     print(V)

@@ -57,10 +57,11 @@ class Optimus():
         return factor_loadings.apply(lambda x: x * predict_factor_returns, axis=1).sum(axis=1)
 
     @staticmethod
-    def risk_structure(hist_factor_returns, factor_loadings):
+    def risk_structure(hist_factor_returns, hist_residuals, factor_loadings):
         """
         get the risk structure matrix V
         :param hist_factor_returns: history factor returns
+        :param hist_residuals: history residuals
         :param factor_loadings: factor loadings in period T
         """
         # covariance matrix of history factor returns and residuals
@@ -68,29 +69,31 @@ class Optimus():
         # sum
         risk_structure = np.dot(np.asmatrix(factor_loadings), factor_cov)
         risk_structure = np.dot(risk_structure, np.asmatrix(factor_loadings).T)
-        return risk_structure
+        return risk_structure + np.cov(np.asmatrix(hist_residuals).T)
 
     @staticmethod
-    def max_returns(returns, risk_structure, sigma2, B, up, industry=None, factor=None, xk=None):
+    def max_returns(returns, risk_structure, te, Base, up, industry=None, deviate=None, factor=None, xk=None):
         """
         calculate the best portfolios, maximize returns give the risk sigma2
         :param returns: future stock returns
         :param risk_structure: risk structure
-        :param sigma2: Double, upper bound of risk
-        :param B: Vector, Basic portfolio
+        :param te: Double, upper bound of Tracking Error
+        :param Base: Vector, Basic portfolio
         :param up: Double, upper bound of weight
         :param industry: DataFrame, dummy variables for industry for N companies, control industry risk
+        :param deviate: Double, deviate bound of industry
         :param factor: DataFrame, future factor loadings, control factor risk
         :param xk: Double, upper bound of factor risk
         :return: optimal portfolio
         """
-        r, V = matrix(np.asarray(returns)) * -1, matrix(np.asarray(risk_structure))
+        r, V = matrix(np.asarray(returns))*-1, matrix(np.asarray(risk_structure))
         num = len(returns)
+        B = matrix(np.asarray(Base))
 
         def F(x=None, z=None):
             if x is None:
                 return 1, matrix(0.0, (len(r), 1))
-            f = x.T * V * x - sigma2
+            f = x.T * V * x - te**2
             Df = x.T * (V + V.T)
             if z is None:
                 return f, Df
@@ -98,11 +101,14 @@ class Optimus():
 
         # Basic portfolio Bound
         G1 = matrix(np.diag(np.ones(num) * -1))
-        h1 = matrix(list(B))
+        h1 = B
         # upper weight
         G2 = matrix(np.diag(np.ones(num)))
-        h2 = matrix(up, (num, 1))
+        h2 = matrix(up, (num, 1)) - B
         G, h = matrix([G1, G2]), matrix([h1, h2])
+        # sum = 0.0
+        A = matrix(np.ones(num)).T
+        b = matrix(0.0, (1, 1))
 
         # factor bound
         if factor is not None:
@@ -110,17 +116,16 @@ class Optimus():
             h3 = matrix(xk, (len(factor.columns), 1))
             G, h = matrix([G, G3]), matrix([h, h3])
 
-        # sum = 0.0
-        A = matrix(np.ones(num)).T
-        b = matrix(0.0, (1, 1))
-
         # hedge industry risk
         if industry is not None:
-            A1 = matrix(np.asarray(industry)).T
-            b1 = matrix(0.0, (len(industry.columns), 1))
-            A, b = matrix([A, A1]), matrix([b, b1])
+            m = matrix(np.asarray(industry)).T * 1.0
+            c = matrix(deviate, (len(industry.columns), 1))
+            if deviate == 0.0:
+                A, b = m, c
+            elif deviate > 0.0:
+                G, h = matrix([matrix([G, m]),-m]), matrix([matrix([h, c]), c])
 
-        solvers.options['show_progress'] = False
+        # solvers.options['show_progress'] = False
         solvers.options['maxiters'] = 1000
         sol = solvers.cpl(r, F, G, h, A=A, b=b)
         return sol['x']
@@ -209,6 +214,32 @@ class Optimus():
         else:
             return results.dropna()
 
+    def hist_residuals(self, factor_returns):
+        """
+        get history residuals from regression results
+        :param factor_returns: DataFrame, factor returns as the regression results
+        :return: DataFrame with index as dates and columns as companies
+        """
+        # group by date
+        freq, returns, company, factor = list(self.names.values())[:4]
+        periods = self.x[freq].unique()
+
+        g = (list(factor_returns[factor].iloc[i]) for i in range(len(factor_returns)))
+
+        def f(x, params):
+            return x[returns] - (x[factor] * next(params)).sum(axis=1)
+
+        results_residuals = pd.DataFrame()
+        for period in periods[:-1]:
+            slice = self.x[self.x[freq] == period]
+            row = f(slice, g)
+            row.index = slice[company]
+            results_residuals[period] = row
+
+        print(results_residuals)
+
+        return results_residuals.applymap(lambda x: 0.0 if x < 0.01 else x)
+    
     def predict_factor_returns(self, factor_returns, method, arg=None):
         """
         predict future factor returns in period T+1
@@ -230,6 +261,37 @@ class Optimus():
             raise ValueError("predict_factor_returns:undefined method：" + method)
         return predicts
 
+    def get_factor_loading_t(self):
+        """
+        get period t's factor loading
+        :return: factor loading
+        """
+        # filter data at period T
+        periods = self.x[self.names['freq']].unique()
+        data_t = self.x[self.x[self.names['freq']] == periods[-1]]
+
+        # return factor loading
+        factor_loading = data_t[self.names['factor']]
+        factor_loading.index = data_t[self.names['company']]
+        return factor_loading
+
+    def get_industry_dummy(self):
+        """
+        get industry dummies
+        :return: DataFrame
+        """
+        # filter data at period T
+        freqs = self.x[self.names['freq']].unique()
+        data_t = self.x[self.x[self.names['freq']] == freqs[-1]]
+        names = data_t['IndustryName'].unique()
+
+        # construct dummy matrix
+        industry = pd.DataFrame()
+        for name in names:
+            industry[name] = data_t['IndustryName'].map(lambda x: 1 if x == name else 0)
+
+        return industry
+
 
 if __name__ == '__main__':
     data = pd.read_csv('expo_test.csv')
@@ -248,34 +310,29 @@ if __name__ == '__main__':
 
     # get history factor returns
     hfr = op.hist_factor_returns()
-    print(hfr)
 
+    hr = op.hist_residuals(hfr)
     # get factor loadings at period T
-    months = data['Month'].unique()
-    factors_T = data[data['Month'] == months[-1]]
-    factor_loading = factors_T[factors]
-    factor_loading.index = factors_T['CompanyCode']
-    print(factor_loading)
+    factor_loading = op.get_factor_loading_t()
 
     # predict factor returns at period T+1
     pfr = op.predict_factor_returns(hfr, 'hpfilter')
-    print(pfr)
 
     # predict stock returns
     psr = op.predict_stock_returns(factor_loading, pfr)
-    print(psr)
 
     # get risk structure
-    rs = op.risk_structure(hfr, factor_loading)
-    print(rs)
+    rs = op.risk_structure(hfr, hr, factor_loading)
 
     # construct risk sequence
     B = np.ones(288)/288
     sigma = np.arange(1, 17) * 0.01
     sigma = np.append(np.arange(1, 10) * 0.001, sigma)
     sigma = np.append(np.arange(1, 10) * 0.0001, sigma)
-    print(sigma)
 
+    industry = op.get_industry_dummy()
+    # print(op.max_returns(psr, rs, 0.07, B, 0.01, industry, 0.0))
+    '''
     # optimize
     r = [sum(np.array(psr) * list(op.max_returns(psr, rs, i, B, 0.05))) for i in sigma]
     print(r)
@@ -287,4 +344,4 @@ if __name__ == '__main__':
     plt.show()
 
     print(sum(np.array(psr) * list(op.min_risk(psr, rs, 0.5, 0.001))))
-
+    '''
