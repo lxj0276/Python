@@ -93,6 +93,24 @@ def predict_factor_loadings(self, method, arg=None):
 + `np.append` 用于往 `array` 里面添加元素， 记得 **往回赋值**
 
 ## Pandas
+**随机采样**
++ `seris.sample(n=3)`
++ `Df.sample(n, frac, replace)`
++ 将 `grouby` 和 `sample` 组合到一起实现分组抽样
+```py
+def random_stocks(hs300, industry=None):
+    if industry is None:
+        return hs300.sample(n=100)
+    return hs300.groupby(industry).apply(lambda x: x.sample(round(len(x)/3)))
+```
+
+**合并两个DF**
++ `Df.append(ignore_index=True)` 只能纵向
++ `pd.concat` 既能纵向也能横向
+
+**存储时设置精度**
++ `DataFrame.to_csv(float_format='%.3f')`
+
 **画图**
 ```py
     import matplotlib.pyplot as plt
@@ -107,6 +125,10 @@ def predict_factor_loadings(self, method, arg=None):
 **索引**
 + `Index` 有 `append`,`delete`,`drop`,`insert` 以及一些集合方法
 + 利用pandas的算术功能时，**索引自动对齐** 会影响道计算结果，应该去除这个影响
++ 赋值时用 `Series` 对一个 `DataFrame`  赋值索引会对齐 **DataFrame** 的索引，即便长度一样也会产生NA。
++ `s1.index.union(s2)` 会使用 `s2` 的值和 `s1` 求并集
++ `reindex` 后要赋值回去，**否则不会改变**
++ `reindex` 和 `index=` 的区别是前者是重采样而后者是更换
 
 **分组和聚合**
 + `pd.qcut` 参数： `labels=False` `10`

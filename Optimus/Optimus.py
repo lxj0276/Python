@@ -19,8 +19,7 @@ class Optimus():
         self.x = pd.DataFrame(x)
         self.names = {'freq': 'Date', 'returns': 'Return',
                       'company': 'CompanyCode', 'factor': list(factor),
-                      'industry': [i for i in factor if self.is_industry(x[i])],
-                      'style': [i for i in factor if not self.is_industry(x[i])]}
+                      'industry': 'IndustryName'}
         if True not in {self.is_const(x[i]) for i in list(factor)}:
             warnings.warn("Warning in Optimus(): Missing one column as the market factor, "
                           "try to add one column as a single-value column like 1.0")
@@ -28,12 +27,6 @@ class Optimus():
     @staticmethod
     def is_const(col):
         if len(set(col)) == 1:
-            return True
-        return False
-
-    @staticmethod
-    def is_industry(col):
-        if len(set(col)) <= 2:
             return True
         return False
 
@@ -66,10 +59,25 @@ class Optimus():
         """
         # covariance matrix of history factor returns and residuals
         factor_cov = np.cov(np.asmatrix(hist_factor_returns).T)
+        residuals_cov = np.cov(np.asmatrix(hist_residuals))
+        diag = np.diag(np.ones(len(hist_residuals)))
+        residuals_cov = np.where(diag, residuals_cov, diag)
+
         # sum
-        risk_structure = np.dot(np.asmatrix(factor_loadings), factor_cov)
-        risk_structure = np.dot(risk_structure, np.asmatrix(factor_loadings).T)
-        return risk_structure + np.cov(np.asmatrix(hist_residuals).T)
+        try:
+            risk_structure = np.dot(np.asmatrix(factor_loadings), factor_cov)
+            risk_structure = np.dot(risk_structure, np.asmatrix(factor_loadings).T)
+        except ValueError:
+            print("ValueError: risk_structure(): "
+                  "factors in factor loadings and history factor returns are not the same")
+            sys.exit(1)
+
+        try:
+            return risk_structure + residuals_cov
+        except ValueError:
+            print("ValueError: risk_structure(): "
+                  "number of companies in factor loadings is not the same as it in residuals")
+            sys.exit(1)
 
     @staticmethod
     def max_returns(returns, risk_structure, te, Base, up, industry=None, deviate=None, factor=None, xk=None):
@@ -86,9 +94,15 @@ class Optimus():
         :param xk: Double, upper bound of factor risk
         :return: optimal portfolio
         """
+        assert len(Base) == len(returns), "numbers of companies in  base vector and returns vector are not the same"
+        assert len(risk_structure) == len(returns), "numbers of companies in risk structure " \
+                                                    "and returns vector are not the same"
+        assert len(industry) == len(returns), "numbers of companies in industry dummy matrix " \
+                                              "not equals to it in returns vector"
+
         r, V = matrix(np.asarray(returns))*-1, matrix(np.asarray(risk_structure))
         num = len(returns)
-        B = matrix(np.asarray(Base))
+        B = matrix(np.asarray(Base)) * 1.0
 
         def F(x=None, z=None):
             if x is None:
@@ -140,6 +154,9 @@ class Optimus():
         :param up: upper bound of weight
         :return: portfolio weights
         """
+        assert len(risk_structure) == len(returns), "numbers of companies in risk structure " \
+                                                    "and returns vector are not the same"
+
         P = matrix(np.asarray(risk_structure))
         num = len(returns)
         q = matrix(np.zeros(num))
@@ -155,7 +172,7 @@ class Optimus():
         A = matrix(np.ones(num)).T
         b = matrix(1.0, (1, 1))
 
-        solvers.options['show_progress'] = False
+        # solvers.options['show_progress'] = False
         solvers.options['maxiters'] = 1000
         try:
             sol = solvers.qp(P, q, G, h, A, b)
@@ -165,7 +182,7 @@ class Optimus():
         else:
             return sol['x']
 
-    def set_names(self, freq=None, returns=None, company=None, factor=None):
+    def set_names(self, freq=None, returns=None, company=None, factor=None, industry=None):
         """
         set the column names that will be used in calculation
         :param freq: the name of the time column
@@ -180,15 +197,15 @@ class Optimus():
         if company:
             self.names['company'] = company
         if factor:
-            self.names['industry'] = [i for i in factor if self.is_industry(self.x[i])]
-            self.names['style'] = [i for i in factor if not self.is_industry(self.x[i])]
             self.names['factor'] = list(factor)
+        if industry:
+            self.names['industry'] = industry
 
     def rank_factors(self):
         """
         rank the market factors in need in the following calculation
         """
-        factor = self.names['style']
+        factor = self.names['factor']
         rank = self.x[factor].rank()
         self.x[factor] = rank
         mean = self.x[factor].mean()
@@ -230,15 +247,18 @@ class Optimus():
             return x[returns] - (x[factor] * next(params)).sum(axis=1)
 
         results_residuals = pd.DataFrame()
+        index = pd.Index([])
         for period in periods[:-1]:
             slice = self.x[self.x[freq] == period]
-            row = f(slice, g)
-            row.index = slice[company]
-            results_residuals[period] = row
+            col = f(slice, g)
+            col.index = slice[company]
+            index = index.union(slice[company])
+            col = col.reindex(index)
+            results_residuals = results_residuals.reindex(index)
+            results_residuals[period] = col
 
-        print(results_residuals)
-
-        return results_residuals.applymap(lambda x: 0.0 if x < 0.01 else x)
+        results_residuals = results_residuals.reindex(self.x[self.x[freq] == periods[-1]][company])
+        return results_residuals.apply(lambda x: x.fillna(x.mean()), axis=1)
     
     def predict_factor_returns(self, factor_returns, method, arg=None):
         """
@@ -283,12 +303,13 @@ class Optimus():
         # filter data at period T
         freqs = self.x[self.names['freq']].unique()
         data_t = self.x[self.x[self.names['freq']] == freqs[-1]]
-        names = data_t['IndustryName'].unique()
+        names = data_t[self.names['industry']].unique()
 
         # construct dummy matrix
         industry = pd.DataFrame()
         for name in names:
-            industry[name] = data_t['IndustryName'].map(lambda x: 1 if x == name else 0)
+            industry[name] = data_t[self.names['industry']].map(lambda x: 1 if x == name else 0)
+        industry.index = data_t[self.names['company']]
 
         return industry
 
@@ -310,14 +331,13 @@ if __name__ == '__main__':
 
     # get history factor returns
     hfr = op.hist_factor_returns()
-
     hr = op.hist_residuals(hfr)
+
     # get factor loadings at period T
     factor_loading = op.get_factor_loading_t()
 
     # predict factor returns at period T+1
     pfr = op.predict_factor_returns(hfr, 'hpfilter')
-
     # predict stock returns
     psr = op.predict_stock_returns(factor_loading, pfr)
 
@@ -331,7 +351,9 @@ if __name__ == '__main__':
     sigma = np.append(np.arange(1, 10) * 0.0001, sigma)
 
     industry = op.get_industry_dummy()
-    # print(op.max_returns(psr, rs, 0.07, B, 0.01, industry, 0.0))
+    print(op.max_returns(psr, rs, 0.07, B, 0.01, industry, 0.0))
+
+    hfr.to_csv('历史收益序列.csv')
     '''
     # optimize
     r = [sum(np.array(psr) * list(op.max_returns(psr, rs, i, B, 0.05))) for i in sigma]
