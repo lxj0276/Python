@@ -20,18 +20,30 @@ class Optimus():
         self.names = {'freq': 'Date', 'returns': 'Return',
                       'company': 'CompanyCode', 'factor': list(factor),
                       'industry': 'IndustryName'}
-        if True not in {self.is_const(x[i]) for i in list(factor)}:
+        if True not in {self.__is_const(x[i]) for i in list(factor)}:
             warnings.warn("Warning in Optimus(): Missing one column as the market factor, "
                           "try to add one column as a single-value column like 1.0")
 
+        self.__hfr = None
+        self.__hr = None
+        self.__pfr = None
+        self.__industry = None
+        self.__factor_loading = None
+        self.__psr = None
+        self.__rs = None
+        self.__B = None
+        self.__te = None
+        self.__up = None
+        self.__deviate = None
+
     @staticmethod
-    def is_const(col):
+    def __is_const(col):
         if len(set(col)) == 1:
             return True
         return False
 
     @staticmethod
-    def ewma(x, weight):
+    def __ewma(x, weight):
         """
         :param x: Series
         :param weight: weight
@@ -40,7 +52,7 @@ class Optimus():
         return reduce(lambda y, z: (1 - weight) * y + weight * z, x)
 
     @staticmethod
-    def predict_stock_returns(factor_loadings, predict_factor_returns):
+    def __predict_stock_returns(factor_loadings, predict_factor_returns):
         """
         predict stock returns in period T+1
         :param factor_loadings: factor loadings in period T
@@ -50,7 +62,7 @@ class Optimus():
         return factor_loadings.apply(lambda x: x * predict_factor_returns, axis=1).sum(axis=1)
 
     @staticmethod
-    def risk_structure(hist_factor_returns, hist_residuals, factor_loadings):
+    def __risk_structure(hist_factor_returns, hist_residuals, factor_loadings):
         """
         get the risk structure matrix V
         :param hist_factor_returns: history factor returns
@@ -80,7 +92,7 @@ class Optimus():
             sys.exit(1)
 
     @staticmethod
-    def max_returns(returns, risk_structure, te, Base, up, industry=None, deviate=None, factor=None, xk=None):
+    def __max_returns(returns, risk_structure, te, Base, up, industry=None, deviate=None, factor=None, xk=None):
         """
         calculate the best portfolios, maximize returns give the risk sigma2
         :param returns: future stock returns
@@ -107,7 +119,7 @@ class Optimus():
         def F(x=None, z=None):
             if x is None:
                 return 1, matrix(0.0, (len(r), 1))
-            f = x.T * V * x - te**2
+            f = x.T * V * x - te**2 / 12
             Df = x.T * (V + V.T)
             if z is None:
                 return f, Df
@@ -145,7 +157,7 @@ class Optimus():
         return sol['x']
 
     @staticmethod
-    def min_risk(returns, risk_structure, target_return, up):
+    def __min_risk(returns, risk_structure, target_return, up):
         """
         Given the target-return, minimize risk
         :param returns: stock returns in T+1
@@ -182,25 +194,6 @@ class Optimus():
         else:
             return sol['x']
 
-    def set_names(self, freq=None, returns=None, company=None, factor=None, industry=None):
-        """
-        set the column names that will be used in calculation
-        :param freq: the name of the time column
-        :param returns: the name of the returns column
-        :param company: the name of the company column
-        :param factor: the name of factor columns
-        """
-        if freq:
-            self.names['freq'] = freq
-        if returns:
-            self.names['returns'] = returns
-        if company:
-            self.names['company'] = company
-        if factor:
-            self.names['factor'] = list(factor)
-        if industry:
-            self.names['industry'] = industry
-
     def rank_factors(self):
         """
         rank the market factors in need in the following calculation
@@ -212,7 +205,7 @@ class Optimus():
         std = self.x[factor].std()
         self.x[factor] = self.x[factor].apply(lambda x: (x - mean) / std, axis=1)
 
-    def hist_factor_returns(self):
+    def __hist_factor_returns(self):
         """
         history factor returns using regression
         :return: DataFrame with index as dates and columns as factors
@@ -231,7 +224,7 @@ class Optimus():
         else:
             return results.dropna()
 
-    def hist_residuals(self, factor_returns):
+    def __hist_residuals(self, factor_returns):
         """
         get history residuals from regression results
         :param factor_returns: DataFrame, factor returns as the regression results
@@ -260,7 +253,7 @@ class Optimus():
         results_residuals = results_residuals.reindex(self.x[self.x[freq] == periods[-1]][company])
         return results_residuals.apply(lambda x: x.fillna(x.mean()), axis=1)
     
-    def predict_factor_returns(self, factor_returns, method, arg=None):
+    def __predict_factor_returns(self, factor_returns, method, arg=0.5):
         """
         predict future factor returns in period T+1
         :param factor_returns: DataFrame, the matrix of history factor returns
@@ -271,7 +264,7 @@ class Optimus():
         if method == 'average':
             predicts = factor_returns.mean()
         elif method == 'ewma':
-            predicts = factor_returns.apply(self.ewma, weight=arg)
+            predicts = factor_returns.apply(self.__ewma, weight=arg)
         elif method == 'hpfilter':
             def f(x):
                 _, trend =  hp_filter.hpfilter(x, 129600)
@@ -281,38 +274,109 @@ class Optimus():
             raise ValueError("predict_factor_returns:undefined method：" + method)
         return predicts
 
-    def get_factor_loading_t(self):
+    def __get_factor_loading_t(self):
         """
         get period t's factor loading
         :return: factor loading
         """
         # filter data at period T
-        periods = self.x[self.names['freq']].unique()
-        data_t = self.x[self.x[self.names['freq']] == periods[-1]]
+        freq, factor, company = self.names['freq'], self.names['factor'], self.names['company']
+        periods = self.x[freq].unique()
+        data_t = self.x[self.x[freq] == periods[-1]]
 
         # return factor loading
-        factor_loading = data_t[self.names['factor']]
-        factor_loading.index = data_t[self.names['company']]
+        factor_loading = data_t[factor]
+        factor_loading.index = data_t[company]
         return factor_loading
 
-    def get_industry_dummy(self):
+    def __get_industry_dummy(self):
         """
         get industry dummies
         :return: DataFrame
         """
         # filter data at period T
-        freqs = self.x[self.names['freq']].unique()
-        data_t = self.x[self.x[self.names['freq']] == freqs[-1]]
-        names = data_t[self.names['industry']].unique()
+        freq, industry_name, company = self.names['freq'], self.names['industry'], self.names['company']
+        freqs = self.x[freq].unique()
+        data_t = self.x[self.x[freq] == freqs[-1]]
+        names = data_t[industry_name].unique()
 
         # construct dummy matrix
         industry = pd.DataFrame()
         for name in names:
-            industry[name] = data_t[self.names['industry']].map(lambda x: 1 if x == name else 0)
-        industry.index = data_t[self.names['company']]
+            industry[name] = data_t[industry_name].map(lambda x: 1 if x == name else 0)
+        industry.index = data_t[company]
 
         return industry
 
+    def init(self):
+        # get history factor returns
+        self.__hfr = self.__hist_factor_returns()
+        self.__hr = self.__hist_residuals(self.__hfr)
+
+        # get factor loadings at period T
+        self.__factor_loading = self.__get_factor_loading_t()
+
+        # predict factor returns at period T+1
+        self.__pfr = self.__predict_factor_returns(self.__hfr, 'hpfilter')
+
+        # risk structure
+        self.__industry = self.__get_industry_dummy()
+
+        self.__psr = self.__predict_stock_returns(self.__factor_loading, self.__pfr)
+        self.__rs = self.__risk_structure(self.__hfr, self.__hr, self.__factor_loading)
+
+    def optimize_returns(self):
+        return self.__max_returns(self.__psr, self.__rs, self.__te, self.__B, self.__up, self.__industry, self.__deviate)
+
+    def get_components(self):
+        freq, factor, company = self.names['freq'], self.names['factor'], self.names['company']
+        periods = self.x[freq].unique()
+        data_t = self.x[self.x[freq] == periods[-1]]
+
+        return list(data_t[company])
+
+    def set_names(self, freq=None, returns=None, company=None, factor=None, industry=None):
+        """
+        set the column names that will be used in calculation
+        :param freq: the name of the time column
+        :param returns: the name of the returns column
+        :param company: the name of the company column
+        :param factor: the name of factor columns
+        """
+        if freq:
+            self.names['freq'] = freq
+        if returns:
+            self.names['returns'] = returns
+        if company:
+            self.names['company'] = company
+        if factor:
+            self.names['factor'] = list(factor)
+        if industry:
+            self.names['industry'] = industry
+
+    def set_hr(self, hr):
+        self.__hr = hr
+
+    def set_industry(self, industry):
+        self.__industry = industry
+
+    def set_factor_loading(self, factor_loading):
+        self.__factor_loading = factor_loading
+
+    def set_base(self, base):
+        self.__B = base
+
+    def set_te(self, te):
+        self.__te = te
+
+    def set_up(self, up):
+        self.__up = up
+
+    def set_deviate(self, deviate):
+        self.__deviate = deviate
+
+    def set_predict_method(self, method):
+        self.__pfr = self.__predict_factor_returns(self.__hfr, method)
 
 if __name__ == '__main__':
     data = pd.read_csv('expo_test.csv')
@@ -329,41 +393,11 @@ if __name__ == '__main__':
     op.set_names(freq='Month')
     print(op.names['factor'])
 
-    # get history factor returns
-    hfr = op.hist_factor_returns()
-    hr = op.hist_residuals(hfr)
+    op.init()
 
-    # get factor loadings at period T
-    factor_loading = op.get_factor_loading_t()
-
-    # predict factor returns at period T+1
-    pfr = op.predict_factor_returns(hfr, 'hpfilter')
-    # predict stock returns
-    psr = op.predict_stock_returns(factor_loading, pfr)
-
-    # get risk structure
-    rs = op.risk_structure(hfr, hr, factor_loading)
-
-    # construct risk sequence
     B = np.ones(288)/288
-    sigma = np.arange(1, 17) * 0.01
-    sigma = np.append(np.arange(1, 10) * 0.001, sigma)
-    sigma = np.append(np.arange(1, 10) * 0.0001, sigma)
-
-    industry = op.get_industry_dummy()
-    print(op.max_returns(psr, rs, 0.07, B, 0.01, industry, 0.0))
-
-    hfr.to_csv('历史收益序列.csv')
-    '''
-    # optimize
-    r = [sum(np.array(psr) * list(op.max_returns(psr, rs, i, B, 0.05))) for i in sigma]
-    print(r)
-
-    # plot
-    import matplotlib.pyplot as plt
-    s = pd.Series(r, index=sigma)
-    s.plot()
-    plt.show()
-
-    print(sum(np.array(psr) * list(op.min_risk(psr, rs, 0.5, 0.001))))
-    '''
+    op.set_base(B)
+    op.set_te(0.07)
+    op.set_up(0.01)
+    op.set_deviate(0.0)
+    print(op.optimize_returns())

@@ -23,7 +23,7 @@ def sample(merged, hr, factor_loading, industry, industry_name=None, index=None)
     return merged, hr, factor_loading, industry
 
 
-def main():
+def main(filename, s=False):
     # pre processing
     data = pd.read_csv('expo_test.csv')
     l = ['ST保千里', '万科Ａ', '京东方Ａ', '华侨城Ａ', '海虹控股']
@@ -38,7 +38,7 @@ def main():
     months = data['Month'].unique()
     factors_t = data[data['Month'] == months[-1]]
 
-    data2 = pd.read_excel('weight.xlsx')
+    data2 = pd.read_csv('hs300.csv', encoding='GBK')
     data2['简称'] = data2['简称'].apply(lambda x:x.replace(' ', ''))
     # merge the two DataFrames
     merged = pd.merge(factors_t, data2, left_on='TickerName', right_on='简称', how='inner')
@@ -55,41 +55,31 @@ def main():
     op.set_names(freq='Month')
     print(op.names['factor'])
 
-    # get history factor returns
-    hfr = op.hist_factor_returns()
-    hr = op.hist_residuals(hfr)
-
-    # get factor loadings at period T
-    factor_loading = op.get_factor_loading_t()
-
-    # predict factor returns at period T+1
-    pfr = op.predict_factor_returns(hfr, 'hpfilter')
-
-    industry = op.get_industry_dummy()
-
-    # sample
-    # merged, hr, factor_loading, industry = sample(merged, hr, factor_loading, industry)
-
-    # predict stock returns
-    psr = op.predict_stock_returns(factor_loading, pfr)
+    op.init()
 
     # get risk structure
     B = np.asarray(merged['权重（%）↓'])/100
-    rs = op.risk_structure(hfr, hr, factor_loading)
-
+    op.set_base(B)
+    op.set_te(0.01)
+    op.set_up(0.07)
+    op.set_deviate(0.01)
     # get weight
-    w1 = pd.Series(op.max_returns(psr, rs, 0.01, B, 0.07, industry, 0.01) * 100, index=merged['简称'])
-    w2 = pd.Series(op.max_returns(psr, rs, 0.03, B, 0.07, industry, 0.01) * 100, index=merged['简称'])
-    w3 = pd.Series(op.max_returns(psr, rs, 0.05, B, 0.07, industry, 0.01) * 100, index=merged['简称'])
-    w4 = pd.Series(op.max_returns(psr, rs, 0.07, B, 0.07, industry, 0.01) * 100, index=merged['简称'])
+    w1 = pd.Series(op.optimize_returns() * 100, index=merged['简称'])
+    op.set_te(0.03)
+    w2 = pd.Series(op.optimize_returns() * 100, index=merged['简称'])
+    op.set_te(0.05)
+    w3 = pd.Series(op.optimize_returns() * 100, index=merged['简称'])
+    op.set_te(0.07)
+    w4 = pd.Series(op.optimize_returns() * 100, index=merged['简称'])
     weight = pd.concat([w1, w2, w3, w4], axis=1)
-    weight = weight.reindex(data2['简称']).fillna(value=0)
+    if not s:
+        weight = weight.reindex(data2['简称']).fillna(value=0)  # when sample no need
     data2.index = data2['简称']
     weight = weight.apply(lambda x: x + data2['权重（%）↓']).dropna()
 
     # produce result
     result = pd.merge(weight, data2, right_index=True, left_index=True, how='inner')
-    result.to_csv('TEST.csv', encoding='GBK', float_format='%.2f')
+    result.to_csv(filename, encoding='GBK', float_format='%.2f')
 
 
 def main2():
@@ -101,5 +91,5 @@ def main2():
 
 
 if __name__ == '__main__':
-    main()
+    main('优化结果.csv')
 
