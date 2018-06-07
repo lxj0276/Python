@@ -7,34 +7,34 @@ import numpy as np
 import statsmodels.api as sm
 from statsmodels.tsa.filters import hp_filter
 from cvxopt import matrix, solvers
-# to rightly install cvxopt see:https://blog.csdn.net/qq_32106517/article/details/78746517
+# 正确安装 cvxopt 的方式见这里:https://blog.csdn.net/qq_32106517/article/details/78746517
 
 
 class Optimus():
-    def __init__(self, x, factor):
+    def __init__(self, x=None, factor=None):
         """
-        :param x: DataFame, T periods, The factor loadings of companies A,B,C... on factors f1,f2,f3...
-        :param factor: List, factors
+        :param x: DataFame, 用于做多因子模型的数据
+        :param factor: List, 多因子模型设计的因子，需要没有NA值，并排除多重共线性
         """
         self.x = pd.DataFrame(x)
-        self.names = {'freq': 'Date', 'returns': 'Return',
-                      'company': 'CompanyCode', 'factor': list(factor),
-                      'industry': 'IndustryName'}
-        if True not in {self.__is_const(x[i]) for i in list(factor)}:
-            warnings.warn("Warning in Optimus(): Missing one column as the market factor, "
-                          "try to add one column as a single-value column like 1.0")
+        self.factor = None if factor is None else list(factor)
+        self.names = {
+            'freq': 'Month',
+            'returns': 'Return',
+            'company': 'CompanyCode',
+            'industry': 'IndustryName'
+        }
+        if factor is not None:
+            if True not in {self.__is_const(x[i]) for i in list(factor)}:
+                warnings.warn("Warning in Optimus(): Missing one column as the market factor, "
+                              "try to add one column as a single-value column like 1.0")
 
         self.__hfr = None
         self.__hr = None
         self.__pfr = None
-        self.__industry = None
         self.__factor_loading = None
         self.__psr = None
         self.__rs = None
-        self.__B = None
-        self.__te = None
-        self.__up = None
-        self.__deviate = None
 
     @staticmethod
     def __is_const(col):
@@ -46,206 +46,217 @@ class Optimus():
     def __ewma(x, weight):
         """
         :param x: Series
-        :param weight: weight
-        :return: ewma result
+        :param weight: 权重
+        :return: ewma结果
         """
         return reduce(lambda y, z: (1 - weight) * y + weight * z, x)
 
     @staticmethod
     def __predict_stock_returns(factor_loadings, predict_factor_returns):
         """
-        predict stock returns in period T+1
-        :param factor_loadings: factor loadings in period T
-        :param predict_factor_returns: factor returns in period T+1
-        :return: stock returns in period T+1
+        预测第T+1期的股票收益
+        :param factor_loadings: 第T期的因子暴露
+        :param predict_factor_returns: 预测的因子收益
+        :return: 第T+1期的股票收益
         """
         return factor_loadings.apply(lambda x: x * predict_factor_returns, axis=1).sum(axis=1)
 
     @staticmethod
     def __risk_structure(hist_factor_returns, hist_residuals, factor_loadings):
         """
-        get the risk structure matrix V
-        :param hist_factor_returns: history factor returns
-        :param hist_residuals: history residuals
-        :param factor_loadings: factor loadings in period T
+        获取多因子模型中的风险结构
+        :param hist_factor_returns: 历史的因子收益
+        :param hist_residuals: 历史残差
+        :param factor_loadings: 第T期的因子暴露
         """
-        # covariance matrix of history factor returns and residuals
+        # 历史因子收益以及残差的协方差矩阵
         factor_cov = np.cov(np.asmatrix(hist_factor_returns).T)
         residuals_cov = np.cov(np.asmatrix(hist_residuals))
         diag = np.diag(np.ones(len(hist_residuals)))
         residuals_cov = np.where(diag, residuals_cov, diag)
 
-        # sum
+        # 求和
         try:
             risk_structure = np.dot(np.asmatrix(factor_loadings), factor_cov)
             risk_structure = np.dot(risk_structure, np.asmatrix(factor_loadings).T)
         except ValueError:
-            print("ValueError: risk_structure(): "
-                  "factors in factor loadings and history factor returns are not the same")
-            sys.exit(1)
+            raise ValueError("risk_structure(): "
+                             "factors in factor loadings and history factor returns are not the same")
 
         try:
             return risk_structure + residuals_cov
         except ValueError:
-            print("ValueError: risk_structure(): "
-                  "number of companies in factor loadings is not the same as it in residuals")
-            sys.exit(1)
+            raise ValueError("ValueError: risk_structure(): "
+                             "number of companies in factor loadings is not the same as it in residuals")
 
     @staticmethod
-    def __max_returns(returns, risk_structure, te, Base, up, industry=None, deviate=None, factor=None, xk=None):
+    def __max_returns(returns, risk_structure, risk, base, up=1.0, industry=None, deviate=None, factor=None, xk=None):
         """
-        calculate the best portfolios, maximize returns give the risk sigma2
-        :param returns: future stock returns
-        :param risk_structure: risk structure
-        :param te: Double, upper bound of Tracking Error
-        :param Base: Vector, Basic portfolio
-        :param up: Double, upper bound of weight
-        :param industry: DataFrame, dummy variables for industry for N companies, control industry risk
-        :param deviate: Double, deviate bound of industry
-        :param factor: DataFrame, future factor loadings, control factor risk
-        :param xk: Double, upper bound of factor risk
-        :return: optimal portfolio
+        给定风险约束，最大化收益的最优投资组合
+        :param returns: 下一期股票收益
+        :param risk_structure: 风险结构
+        :param risk: Double, 风险或是年化跟踪误差的上限
+        :param base: Vector, 基准组合
+        :param up: Double, 个股权重的上限
+        :param industry: DataFrame, 行业哑变量矩阵
+        :param deviate: Double, 行业偏离
+        :param factor: DataFrame, 因子暴露
+        :param xk: Double, 因子风险的上限
+        :return: 最优化的投资组合
         """
-        assert len(Base) == len(returns), "numbers of companies in  base vector and returns vector are not the same"
         assert len(risk_structure) == len(returns), "numbers of companies in risk structure " \
                                                     "and returns vector are not the same"
-        assert len(industry) == len(returns), "numbers of companies in industry dummy matrix " \
-                                              "not equals to it in returns vector"
+        if industry is not None:
+            assert len(industry) == len(returns), "numbers of companies in industry dummy matrix " \
+                                                  "not equals to it in returns vector"
+        if base is not None:
+            assert len(base) == len(returns), "numbers of companies in  base vector and returns vector are not the same"
 
-        r, V = matrix(np.asarray(returns))*-1, matrix(np.asarray(risk_structure))
+        r, v = matrix(np.asarray(returns))*-1, matrix(np.asarray(risk_structure))
         num = len(returns)
-        B = matrix(np.asarray(Base)) * 1.0
+        base = matrix(np.asarray(base if base is not None else np.zeros(num))) * 1.0
 
-        def F(x=None, z=None):
+        def func(x=None, z=None):
             if x is None:
                 return 1, matrix(0.0, (len(r), 1))
-            f = x.T * V * x - te**2 / 12
-            Df = x.T * (V + V.T)
+            f = x.T * v * x - risk ** 2 / 12
+            df = x.T * (v + v.T)
             if z is None:
-                return f, Df
-            return f, Df, z[0, 0] * (V + V.T)
+                return f, df
+            return f, df, z[0, 0] * (v + v.T)
 
-        # Basic portfolio Bound
-        G1 = matrix(np.diag(np.ones(num) * -1))
-        h1 = B
-        # upper weight
-        G2 = matrix(np.diag(np.ones(num)))
-        h2 = matrix(up, (num, 1)) - B
-        G, h = matrix([G1, G2]), matrix([h1, h2])
-        # sum = 0.0
-        A = matrix(np.ones(num)).T
-        b = matrix(0.0, (1, 1))
+        # 不能卖空
+        g1 = matrix(np.diag(np.ones(num) * -1))
+        h1 = base
+        # 个股上限
+        g2 = matrix(np.diag(np.ones(num)))
+        h2 = matrix(up, (num, 1)) - base
+        g, h = matrix([g1, g2]), matrix([h1, h2])
+        # 控制权重和
+        # 0.0 if sum(base) > 0 else 1.0 在没有基准（即基准为 0.0）时为1.0，有基准时为0.0
+        a = matrix(np.ones(num)).T
+        b = matrix(0.0 if sum(base) > 0 else 1.0, (1, 1))
 
-        # factor bound
+        # 因子风险约束
         if factor is not None:
-            G3 = matrix(np.asarray(factor)).T
+            g3 = matrix(np.asarray(factor)).T
             h3 = matrix(xk, (len(factor.columns), 1))
-            G, h = matrix([G, G3]), matrix([h, h3])
+            g, h = matrix([g, g3]), matrix([h, h3])
 
-        # hedge industry risk
+        # 对冲行业风险
         if industry is not None:
             m = matrix(np.asarray(industry)).T * 1.0
             c = matrix(deviate, (len(industry.columns), 1))
             if deviate == 0.0:
-                A, b = m, c
+                a, base = m, c
             elif deviate > 0.0:
-                G, h = matrix([matrix([G, m]),-m]), matrix([matrix([h, c]), c])
+                g, h = matrix([matrix([g, m]), -m]), matrix([matrix([h, c]), c])
 
         # solvers.options['show_progress'] = False
         solvers.options['maxiters'] = 1000
-        sol = solvers.cpl(r, F, G, h, A=A, b=b)
+        sol = solvers.cpl(r, func, g, h, A=a, b=b)
         return sol['x']
 
     @staticmethod
-    def __min_risk(returns, risk_structure, target_return, up):
+    def __min_risk(returns, risk_structure, target_return, base, up=1.0, industry=None, deviate=None):
         """
-        Given the target-return, minimize risk
-        :param returns: stock returns in T+1
-        :param risk_structure: risk structure
-        :param target_return: target return
-        :param up: upper bound of weight
-        :return: portfolio weights
+        给定目标收益，最小化风险
+        :param returns: 下一期的股票收益
+        :param risk_structure: 风险结构
+        :param target_return: 目标收益
+        :param base: 基准，可以为None
+        :param up: 权重上限
+        :param industry: 行业哑变量
+        :param deviate: 行业偏离
+        :return: 最优化的投资组合权重
         """
         assert len(risk_structure) == len(returns), "numbers of companies in risk structure " \
                                                     "and returns vector are not the same"
+        if industry is not None:
+            assert len(industry) == len(returns), "numbers of companies in industry dummy matrix " \
+                                                  "not equals to it in returns vector"
+        if base is not None:
+            assert len(base) == len(returns), "numbers of companies in  base vector and returns vector are not the same"
 
-        P = matrix(np.asarray(risk_structure))
+        p = matrix(np.asarray(risk_structure))
         num = len(returns)
         q = matrix(np.zeros(num))
+        base = matrix(np.asarray(base if base is not None else np.zeros(num))) * 1.0
 
-        # upper weight
-        G1 = matrix(np.diag(np.ones(num)))
-        h1 = matrix(up, (num, 1))
-        # target return
-        G2 = matrix(np.asarray(returns)).T * -1
-        h2 = matrix(-1*target_return, (1,1))
-        G, h = matrix([G1, G2]), matrix([h1, h2])
-        # sum = 1.0
-        A = matrix(np.ones(num)).T
-        b = matrix(1.0, (1, 1))
+        # 不能卖空
+        g1 = matrix(np.diag(np.ones(num) * -1))
+        h1 = base
+        # 权重上限
+        g2 = matrix(np.diag(np.ones(num)))
+        h2 = matrix(up, (num, 1)) - base
+        # 目标收益
+        g3 = matrix(np.asarray(returns)).T * -1
+        h3 = matrix(-1*target_return, (1, 1))
+        g, h = matrix([g1, g2, g3]), matrix([h1, h2, h3])
+        # 权重和为0 或 1
+        a = matrix(np.ones(num)).T
+        b = matrix(0.0 if sum(base) > 0 else 1.0, (1, 1))
+
+        # 对冲行业风险
+        if industry is not None:
+            m = matrix(np.asarray(industry)).T * 1.0
+            c = matrix(deviate, (len(industry.columns), 1))
+            if deviate == 0.0:
+                a, base = m, c
+            elif deviate > 0.0:
+                g, h = matrix([matrix([g, m]), -m]), matrix([matrix([h, c]), c])
 
         # solvers.options['show_progress'] = False
         solvers.options['maxiters'] = 1000
         try:
-            sol = solvers.qp(P, q, G, h, A, b)
-        except ValueError as e:
-            print("Error in min_risk():make sure your equation can be solved")
-            sys.exit(1)
+            sol = solvers.qp(p, q, g, h, a, b)
+        except ValueError:
+            raise ValueError("Error in min_risk():make sure your equation can be solved")
         else:
             return sol['x']
 
-    def rank_factors(self):
-        """
-        rank the market factors in need in the following calculation
-        """
-        factor = self.names['factor']
-        rank = self.x[factor].rank()
-        self.x[factor] = rank
-        mean = self.x[factor].mean()
-        std = self.x[factor].std()
-        self.x[factor] = self.x[factor].apply(lambda x: (x - mean) / std, axis=1)
-
     def __hist_factor_returns(self):
         """
-        history factor returns using regression
-        :return: DataFrame with index as dates and columns as factors
+        历史因子收益序列
+        :return: 历史因子收益
         """
-        # divide the DataFrame into T periods
-        freq, returns, _, factor = list(self.names.values())[:4]
+        freq, returns = list(self.names.values())[:2]
+        # 分为T期
         grouped = self.x.groupby(self.x[freq])
 
-        # T OLS on T groups
+        # 对T期做T次回归
         try:
-            def f(x): return sm.OLS(x[returns], x[factor]).fit().params
+            def f(x):
+                return sm.OLS(x[returns], x[self.factor]).fit().params
             results = grouped.apply(f)
         except np.linalg.linalg.LinAlgError:
-            print("Error in hist_factor_returns: Check if the variables are suitable in OLS")
-            sys.exit(1)
+            raise np.linalg.linalg.LinAlgError("Error in hist_factor_returns: "
+                                               "Check if the variables are suitable in OLS")
         else:
             return results.dropna()
 
     def __hist_residuals(self, factor_returns):
         """
-        get history residuals from regression results
-        :param factor_returns: DataFrame, factor returns as the regression results
-        :return: DataFrame with index as dates and columns as companies
+        获取历史残差
+        :param factor_returns: DataFrame,历史因子收益
+        :return: 残差
         """
-        # group by date
-        freq, returns, company, factor = list(self.names.values())[:4]
+        # 分组
+        freq, returns, company = list(self.names.values())[:3]
         periods = self.x[freq].unique()
 
-        g = (list(factor_returns[factor].iloc[i]) for i in range(len(factor_returns)))
+        g = (list(factor_returns[self.factor].iloc[i]) for i in range(len(factor_returns)))
 
         def f(x, params):
-            return x[returns] - (x[factor] * next(params)).sum(axis=1)
+            return x[returns] - (x[self.factor] * next(params)).sum(axis=1)
 
         results_residuals = pd.DataFrame()
         index = pd.Index([])
         for period in periods[:-1]:
-            slice = self.x[self.x[freq] == period]
-            col = f(slice, g)
-            col.index = slice[company]
-            index = index.union(slice[company])
+            group = self.x[self.x[freq] == period]
+            col = f(group, g)
+            col.index = group[company]
+            index = index.union(group[company])
             col = col.reindex(index)
             results_residuals = results_residuals.reindex(index)
             results_residuals[period] = col
@@ -255,11 +266,11 @@ class Optimus():
     
     def __predict_factor_returns(self, factor_returns, method, arg=0.5):
         """
-        predict future factor returns in period T+1
-        :param factor_returns: DataFrame, the matrix of history factor returns
-        :param method: str, the method to predict
-        :param arg: additional parameter used in prediction
-        :return: Series with index as factors
+        预测下一期的因子收益
+        :param factor_returns: DataFrame, 历史收益矩阵
+        :param method: str, 预测方法
+        :param arg: 预测方法需要的参数
+        :return: 下一期的因子收益
         """
         if method == 'average':
             predicts = factor_returns.mean()
@@ -267,7 +278,7 @@ class Optimus():
             predicts = factor_returns.apply(self.__ewma, weight=arg)
         elif method == 'hpfilter':
             def f(x):
-                _, trend =  hp_filter.hpfilter(x, 129600)
+                _, trend = hp_filter.hpfilter(x, 129600)
                 return trend.iloc[-1]
             predicts = factor_returns.apply(f)
         else:
@@ -276,26 +287,82 @@ class Optimus():
 
     def __get_factor_loading_t(self):
         """
-        get period t's factor loading
-        :return: factor loading
+        获取当期因子暴露
+        :return: 因子暴露
         """
-        # filter data at period T
-        freq, factor, company = self.names['freq'], self.names['factor'], self.names['company']
+        freq, _, company = list(self.names.values())[:3]
+        # 获取当期数据
         periods = self.x[freq].unique()
         data_t = self.x[self.x[freq] == periods[-1]]
 
-        # return factor loading
-        factor_loading = data_t[factor]
+        # 返回因子暴露
+        factor_loading = data_t[self.factor]
         factor_loading.index = data_t[company]
         return factor_loading
 
-    def __get_industry_dummy(self):
+    def factor_model(self):
         """
-        get industry dummies
+        创建多因子模型
+        """
+        # 获取历史因子收益及残差
+        self.__hfr = self.__hist_factor_returns()
+        self.__hr = self.__hist_residuals(self.__hfr)
+
+        # 获取当期因子暴露
+        self.__factor_loading = self.__get_factor_loading_t()
+
+        # 预测当期的因子收益
+        self.__pfr = self.__predict_factor_returns(self.__hfr, 'hpfilter')
+
+        # 风险结构
+        self.__psr = self.__predict_stock_returns(self.__factor_loading, self.__pfr)
+        self.__rs = self.__risk_structure(self.__hfr, self.__hr, self.__factor_loading)
+
+    def max_returns(self, risk, b=None, up=1.0, industry=None, deviate=None, returns=None, rs=None):
+        """
+        给定风险或年化跟踪误差最大化组合收益
+        :param risk: 风险或年化跟踪误差
+        :param b: 组合基准
+        :param up: 个股上限
+        :param industry: 行业哑变量
+        :param deviate: 行业偏离
+        :param returns: 预期个股收益
+        :param rs: 风险结构
+        :return: 最优化的投资组合
+        """
+        if returns is None:
+            returns = self.__psr
+        if rs is None:
+            rs = self.__rs
+
+        return self.__max_returns(returns, rs, risk, b, up, industry, deviate)
+
+    def min_risk(self, target_return, b=None, up=1.0, industry=None, deviate=None, returns=None, rs=None):
+        """
+        给定组合目标收益，最小化风险
+        :param target_return: 目标组合收益
+        :param b: 基准组合
+        :param up: 个股上限
+        :param industry: 行业哑变量
+        :param deviate: 行业偏离
+        :param returns: 预期个股收益
+        :param rs: 风险结构
+        :return: 最优化的投资组合
+        """
+        if returns is None:
+            returns = self.__psr
+        if rs is None:
+            rs = self.__rs
+
+        return self.__min_risk(returns, rs, target_return, b, up, industry, deviate)
+
+    def get_industry_dummy(self):
+        """
+        获取行业哑变量矩阵
         :return: DataFrame
         """
+        freq, _, company, industry_name = list(self.names.values())
         # filter data at period T
-        freq, industry_name, company = self.names['freq'], self.names['industry'], self.names['company']
         freqs = self.x[freq].unique()
         data_t = self.x[self.x[freq] == freqs[-1]]
         names = data_t[industry_name].unique()
@@ -308,75 +375,66 @@ class Optimus():
 
         return industry
 
-    def init(self):
-        # get history factor returns
-        self.__hfr = self.__hist_factor_returns()
-        self.__hr = self.__hist_residuals(self.__hfr)
-
-        # get factor loadings at period T
-        self.__factor_loading = self.__get_factor_loading_t()
-
-        # predict factor returns at period T+1
-        self.__pfr = self.__predict_factor_returns(self.__hfr, 'hpfilter')
-
-        # risk structure
-        self.__industry = self.__get_industry_dummy()
-
-        self.__psr = self.__predict_stock_returns(self.__factor_loading, self.__pfr)
-        self.__rs = self.__risk_structure(self.__hfr, self.__hr, self.__factor_loading)
-
-    def optimize_returns(self):
-        return self.__max_returns(self.__psr, self.__rs, self.__te, self.__B, self.__up, self.__industry, self.__deviate)
-
     def get_components(self):
-        freq, factor, company = self.names['freq'], self.names['factor'], self.names['company']
+        """
+        获取多因子模型中默认的股票成分，根据最后一期可用的因子暴露的成分股获得
+        :return:
+        """
+        freq, _, company = list(self.names.values())[:3]
         periods = self.x[freq].unique()
         data_t = self.x[self.x[freq] == periods[-1]]
 
         return list(data_t[company])
 
-    def set_names(self, freq=None, returns=None, company=None, factor=None, industry=None):
+    def set_names(self, freq=None, returns=None, company=None, industry=None, factor=None):
         """
-        set the column names that will be used in calculation
-        :param freq: the name of the time column
-        :param returns: the name of the returns column
-        :param company: the name of the company column
-        :param factor: the name of factor columns
+        设置计算中用到的列名
+        :param freq: 用到的时间列名
+        :param returns: 收益列名
+        :param company: 公司或股票列名
+        :param industry: 行业列名
+        :param factor: 因子列名
         """
         if freq:
+            assert self.x.columns.contains(freq), "不存在列:" + freq
             self.names['freq'] = freq
         if returns:
+            assert self.x.columns.contains(returns), "不存在列:" + returns
             self.names['returns'] = returns
         if company:
+            assert self.x.columns.contains(company), "不存在列:" + company
             self.names['company'] = company
-        if factor:
-            self.names['factor'] = list(factor)
         if industry:
+            assert self.x.columns.contains(industry), "不存在列:" + industry
             self.names['industry'] = industry
+        if factor:
+            self.factor = list(factor)
 
     def set_hr(self, hr):
         self.__hr = hr
 
-    def set_industry(self, industry):
-        self.__industry = industry
-
     def set_factor_loading(self, factor_loading):
         self.__factor_loading = factor_loading
 
-    def set_base(self, base):
-        self.__B = base
+    def set_returns(self, returns):
+        self.__psr = returns
 
-    def set_te(self, te):
-        self.__te = te
+    def set_risk_structure(self, rs):
+        self.__rs = rs
 
-    def set_up(self, up):
-        self.__up = up
+    def set_predict_method(self, method, arg=None):
+        self.__pfr = self.__predict_factor_returns(self.__hfr, method, arg)
+        self.__psr = self.__predict_stock_returns(self.__factor_loading, self.__pfr)
+        self.__rs = self.__risk_structure(self.__hfr, self.__hr, self.__factor_loading)
 
-    def set_deviate(self, deviate):
-        self.__deviate = deviate
+    def print_private(self):
+        print('历史因子收益矩阵\n', self.__hfr)
+        print('残差矩阵\n', self.__hr)
+        print('预测因子收益\n', self.__pfr)
+        print('因子载荷\n', self.__factor_loading)
+        print('预测股票收益\n', self.__psr)
+        print('风险结构\n', self.__rs)
 
-    def set_predict_method(self, method):
-        self.__pfr = self.__predict_factor_returns(self.__hfr, method)
 
 if __name__ == '__main__':
     data = pd.read_csv('expo_test.csv')
@@ -391,13 +449,11 @@ if __name__ == '__main__':
     # create instance
     op = Optimus(data, factors)
     op.set_names(freq='Month')
-    print(op.names['factor'])
 
-    op.init()
-
-    B = np.ones(288)/288
-    op.set_base(B)
-    op.set_te(0.07)
-    op.set_up(0.01)
-    op.set_deviate(0.0)
-    print(op.optimize_returns())
+    op.factor_model()
+    b = np.ones(288) / 288  # 构建基准
+    ind = op.get_industry_dummy()  # 获取哑变量
+    print(op.max_returns(0.7, up=0.01))  # 无基准
+    print(op.max_returns(0.07, b, 0.01, ind, 0.01))  # 有基准
+    print(op.min_risk(0.1, up=0.01))  # 无基准
+    print(op.min_risk(0.1, b, 0.01, ind, 0.01))  # 有基准

@@ -93,6 +93,8 @@ def predict_factor_loadings(self, method, arg=None):
 + `np.append` 用于往 `array` 里面添加元素， 记得 **往回赋值**
 
 ## Pandas
++ `astype` 可以转换数据类型，也可以在创建时指定
+
 **随机采样**
 + `seris.sample(n=3)`
 + `Df.sample(n, frac, replace)`
@@ -108,8 +110,9 @@ def random_stocks(hs300, industry=None):
 + `Df.append(ignore_index=True)` 只能纵向
 + `pd.concat` 既能纵向也能横向
 
-**存储时设置精度**
+**存储时设置**
 + `DataFrame.to_csv(float_format='%.3f')`
++ `date_format='%Y%m'` 用来设置时间
 
 **画图**
 ```py
@@ -129,6 +132,7 @@ def random_stocks(hs300, industry=None):
 + `s1.index.union(s2)` 会使用 `s2` 的值和 `s1` 求并集
 + `reindex` 后要赋值回去，**否则不会改变**
 + `reindex` 和 `index=` 的区别是前者是重采样而后者是更换
++ `Index` 只有 `map` 方法没有 `apply` 方法
 
 **分组和聚合**
 + `pd.qcut` 参数： `labels=False` `10`
@@ -154,10 +158,14 @@ def random_stocks(hs300, industry=None):
 **时间序列索引**
 + `pd.to_datetime()`
 + `dateutil.parser.parse`
++ 可以用 `astype('str')` 来进行字符串的转换，再用 `pd.to_datetime` 转换为 `datetime`
++ `resample('M').mean()`
++ `pd.date_range('2005-01-05', '2018-05-05', freq='M')` 会自动对齐到月底
 
 **pandas cumulative function**
 + `pd.expanding_apply()`
 + `functools.reduce(lambda x,y:0.5*x+0.5*y, s)`
++ `df.rolling.apply()`
 
 **ewma**
 + `pd.ewma` 有 `alpha` 等参数

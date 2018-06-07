@@ -60,16 +60,16 @@ def main(filename, s=False):
     # get risk structure
     B = np.asarray(merged['权重（%）↓'])/100
     op.set_base(B)
-    op.set_te(0.01)
+    op.set_risk(0.01)
     op.set_up(0.07)
     op.set_deviate(0.01)
     # get weight
     w1 = pd.Series(op.optimize_returns() * 100, index=merged['简称'])
-    op.set_te(0.03)
+    op.set_risk(0.03)
     w2 = pd.Series(op.optimize_returns() * 100, index=merged['简称'])
-    op.set_te(0.05)
+    op.set_risk(0.05)
     w3 = pd.Series(op.optimize_returns() * 100, index=merged['简称'])
-    op.set_te(0.07)
+    op.set_risk(0.07)
     w4 = pd.Series(op.optimize_returns() * 100, index=merged['简称'])
     weight = pd.concat([w1, w2, w3, w4], axis=1)
     if not s:
@@ -82,14 +82,30 @@ def main(filename, s=False):
     result.to_csv(filename, encoding='GBK', float_format='%.2f')
 
 
-def main2():
-    s1 = pd.Series([1, 2, 3], index=['a', 'b', 'c'])
-    data2 = pd.read_excel('weight.xlsx')
-    count = data2.groupby(data2['Wind行业']).apply(lambda x: len(x))
-    print(count)
-    print(random_stocks(data2, 'Wind行业'))
+def test():
+    data = pd.read_csv('expo_test.csv')
+    factors = list(data.columns.drop(['Ticker', 'CompanyCode', 'TickerName', 'SecuCode', 'IndustryName',
+                                      'CategoryName', 'Date', 'Month', 'Return', 'PCF']))
+
+    # remove redundant variables
+    factors.remove('AnalystROEAdj')
+    factors.remove('FreeCashFlow')
+
+    op = Optimus(data, factors)
+
+    op.set_names(freq='Month', returns='Return', company='TickerName', industry='IndustryName')
+
+    op.factor_model()
+    # op.print_private()
+    # print(op.get_components())
+    # print(op.get_industry_dummy())
+    print(op.max_returns(0.7, up=0.01))
+    b = np.ones(288) / 288
+    industry = op.get_industry_dummy()
+    print(op.max_returns(0.07, b, 0.01, industry, 0.01))
+    print(op.min_risk(0.1, up=0.01))
+    print(op.min_risk(0.1, b, 0.01, industry, 0.01))
 
 
 if __name__ == '__main__':
-    main('优化结果.csv')
-
+    test()
