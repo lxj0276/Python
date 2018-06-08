@@ -10,7 +10,7 @@ from cvxopt import matrix, solvers
 # 正确安装 cvxopt 的方式见这里:https://blog.csdn.net/qq_32106517/article/details/78746517
 
 
-class Optimus():
+class Optimus:
     def __init__(self, x=None, factor=None):
         """
         :param x: DataFame, 用于做多因子模型的数据
@@ -145,7 +145,7 @@ class Optimus():
 
         # 对冲行业风险
         if industry is not None:
-            m = matrix(np.asarray(industry)).T * 1.0
+            m = matrix(np.asarray(industry) * 1.0).T
             c = matrix(deviate, (len(industry.columns), 1))
             if deviate == 0.0:
                 a, base = m, c
@@ -184,14 +184,14 @@ class Optimus():
         base = matrix(np.asarray(base if base is not None else np.zeros(num))) * 1.0
 
         # 不能卖空
-        g1 = matrix(np.diag(np.ones(num) * -1))
+        g1 = matrix(np.diag(np.ones(num) * -1.0))
         h1 = base
         # 权重上限
         g2 = matrix(np.diag(np.ones(num)))
         h2 = matrix(up, (num, 1)) - base
         # 目标收益
-        g3 = matrix(np.asarray(returns)).T * -1
-        h3 = matrix(-1*target_return, (1, 1))
+        g3 = matrix(np.asarray(returns)).T * -1.0
+        h3 = matrix(-1.0*target_return, (1, 1))
         g, h = matrix([g1, g2, g3]), matrix([h1, h2, h3])
         # 权重和为0 或 1
         a = matrix(np.ones(num)).T
@@ -199,7 +199,7 @@ class Optimus():
 
         # 对冲行业风险
         if industry is not None:
-            m = matrix(np.asarray(industry)).T * 1.0
+            m = matrix(np.asarray(industry) * 1.0).T
             c = matrix(deviate, (len(industry.columns), 1))
             if deviate == 0.0:
                 a, base = m, c
@@ -262,7 +262,7 @@ class Optimus():
             results_residuals[period] = col
 
         results_residuals = results_residuals.reindex(self.x[self.x[freq] == periods[-1]][company])
-        return results_residuals.apply(lambda x: x.fillna(x.mean()), axis=1)
+        return results_residuals.apply(lambda x: x.fillna(x.mean()))
     
     def __predict_factor_returns(self, factor_returns, method, arg=0.5):
         """
@@ -437,23 +437,64 @@ class Optimus():
 
 
 if __name__ == '__main__':
-    data = pd.read_csv('expo_test.csv')
+    # data = pd.read_csv(r'data\pool.csv')
+    #
+    # factors = list(data.columns.drop(['Ticker', 'CompanyCode', 'TickerName', 'SecuCode', 'IndustryName',
+    #                                   'CategoryName', 'Date', 'Month', 'Return', 'PCF']))
+    #
+    # remove redundant variables
+    # factors.remove('AnalystROEAdj')
+    # factors.remove('FreeCashFlow')
+    # factors.remove('Index_x')
+    # factors.remove('Index_y')
+    # data.dropna(inplace=True)
+    #
+    # create instance
+    # op = Optimus(data, factors)
+    # op.set_names(freq='Month')
 
-    factors = list(data.columns.drop(['Ticker', 'CompanyCode', 'TickerName', 'SecuCode', 'IndustryName',
-                                      'CategoryName', 'Date', 'Month', 'Return', 'PCF']))
-
+    # l = len(op.get_components())
+    # op.factor_model()
+    # b = np.ones(l) / l  # 构建基准
+    # ind = op.get_industry_dummy()  # 获取哑变量
+    # print(ind)
+    # print(matrix())
+    # print(op.max_returns(0.7, up=0.01))  # 无基准
+    # print(op.max_returns(0.07, b, 0.01, ind, 0.01))  # 有基准
+    # print(op.min_risk(0.1, up=0.01))  # 无基准
+    # print(op.min_risk(0.1, b, 0.01, ind, 0.01))  # 有基准
+    data = pd.read_csv('data/pool.csv')
+    data.dropna(inplace=True)
+    data.drop(['Index_y', 'Index_x'], axis=1, inplace=True)
+    factors = list(data.columns.drop(
+        ['Ticker', 'CompanyCode', 'TickerName', 'SecuCode', 'IndustryName', 'CategoryName', 'Date', 'Month', 'Return',
+         'PCF']))
     # remove redundant variables
     factors.remove('AnalystROEAdj')
     factors.remove('FreeCashFlow')
 
     # create instance
-    op = Optimus(data, factors)
-    op.set_names(freq='Month')
+    datelist = list(data['Date'].unique())
 
-    op.factor_model()
-    b = np.ones(288) / 288  # 构建基准
-    ind = op.get_industry_dummy()  # 获取哑变量
-    print(op.max_returns(0.7, up=0.01))  # 无基准
-    print(op.max_returns(0.07, b, 0.01, ind, 0.01))  # 有基准
-    print(op.min_risk(0.1, up=0.01))  # 无基准
-    print(op.min_risk(0.1, b, 0.01, ind, 0.01))  # 有基准
+    right = 0
+    false = 0
+    for i in datelist[5:]:
+        dd = data[data['Date'] < i]
+        op = Optimus(dd, factors)
+        ll = len(op.get_components())
+        op.set_names(freq='Month')
+        op.factor_model()
+        B = np.ones(ll) / ll
+        industry = op.get_industry_dummy()
+        try:
+            print(op.min_risk(0.1, B, 0.01, industry, 0.01))
+            right += 1
+        except ValueError:
+            try:
+                print(op.min_risk(0.01, B, 0.01, industry, 0.01))
+                right += 1
+            except ValueError:
+                false += 1
+
+    print(right)
+    print(false)

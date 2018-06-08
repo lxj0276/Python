@@ -3,6 +3,11 @@ import numpy as np
 from Optimus import Optimus
 
 
+class LargeAsset:
+    def __init__(self, data):
+        self.data = data
+
+
 def predict(data):
     return data.ewm(alpha=0.8).mean().iloc[-1]
 
@@ -53,6 +58,31 @@ def back_test(df, num, method, arg):
     return res[num-1:]
 
 
+def max_drag_down(quot, trans, func):
+    """
+    计算最大回撤
+    :param quot: DataFrame, 历史行情， 日涨跌幅
+    :param trans: DataFrame, 每一期调仓的值
+    :param func: 能够将历史行情与调仓的index匹配起来的函数
+    :return: 最大回撤
+    """
+    def f(x, w):
+        x.index = x['ticker']
+        x = x.reindex(w[:-1].index).fillna(1.0)
+        return np.dot(np.asarray(w[:-1].fillna(0)).T, np.asarray(x['pctchg']))
+
+    s = pd.Series(np.nan, index=quot.index.unique())
+    dates = quot.groupby(quot.index)
+    for i, date in dates:
+        try:
+            s[i] = f(date, trans.loc[func(i)])
+        except KeyError:
+            pass
+
+    s = s.dropna()
+    s.groupby(s.index.map(lambda x: int(x/100)))
+
+
 def main():
     data = pd.read_csv('data/IndexPrice.csv', index_col='DATES')
     data.columns = data.columns.map(str.lower)
@@ -87,7 +117,13 @@ def main():
 
 
 if __name__ == '__main__':
-    # d = pd.DataFrame(np.arange(9).reshape(3, 3), columns=['a', 'b', 'c'])
+    # d = pd.DataFrame(np.arange(144).reshape(144, 1), index=pd.period_range('2001/01', periods=144, freq='M'))
+    # print(d.resample('Y').apply(lambda x: x.dtype))
+    # print(pd.Period('20050102').asfreq('M'))
+    # print(d.loc['2001/09'])
+    # arr1 = np.array([2, 1])
+    # arr2 = np.array([np.nan, 1])
+    # print(str(1))
     # s = pd.Series(['1', '2'], index=['a', 'b'])
     # l = [1, 2, 3]
     # print(l.append(4))
