@@ -3,9 +3,8 @@ import numpy as np
 from Optimus import Optimus
 
 
-class LargeAsset:
-    def __init__(self, data):
-        self.data = data
+def predict_month_return(data):
+    data.resample('M').apply()
 
 
 def predict(data):
@@ -18,6 +17,7 @@ def allocate(data, method, arg):
     :param data: 年度数据
     :param method: 配置方法，最小化风险或是最大化收益
     :param arg: 额外参数，最小化风险时为目标收益，最大化收益时为风险
+    :param up: 大类上限
     :return: 返回配置结果
     """
     predicts = predict(data)
@@ -26,7 +26,11 @@ def allocate(data, method, arg):
 
     if method == 'min_risk':
         r = (1 + arg) ** (1 / 12) - 1
-        w = op.min_risk(target_return=r, returns=predicts, rs=rs)
+        up = predicts.iloc[-1] / r + 0.1
+        up = up if up < 1.0 else 1.0
+        w = op.min_risk(target_return=r, up=up, returns=predicts, rs=rs)
+        print(up)
+        print(w)
         risk = (np.dot(w.T, np.dot(rs, w))[0, 0]) ** 0.5 * (12 ** 0.5)  # 年化
         return w, risk
     else:
@@ -96,6 +100,12 @@ def main():
     index = pd.period_range(start='2005/01', end='2018/05', freq='M')
     df.index = index
     df = (df / df.shift(1) - 1).iloc[1:]
+
+    res = pd.DataFrame(columns=df.columns, index=df.index, dtype='float64')
+    for i in range(12, len(df)+1):
+        res.iloc[i] = predict(df.iloc[i-12:i].dropna(axis=1))
+
+    print(res)
     res1 = back_test(df, 12, 'min_risk', 0.03)
     res2 = back_test(df, 12, 'min_risk', 0.05)
     res3 = back_test(df, 12, 'min_risk', 0.07)
@@ -117,16 +127,4 @@ def main():
 
 
 if __name__ == '__main__':
-    # d = pd.DataFrame(np.arange(144).reshape(144, 1), index=pd.period_range('2001/01', periods=144, freq='M'))
-    # print(d.resample('Y').apply(lambda x: x.dtype))
-    # print(pd.Period('20050102').asfreq('M'))
-    # print(d.loc['2001/09'])
-    # arr1 = np.array([2, 1])
-    # arr2 = np.array([np.nan, 1])
-    # print(str(1))
-    # s = pd.Series(['1', '2'], index=['a', 'b'])
-    # l = [1, 2, 3]
-    # print(l.append(4))
-    # s.index = ['a', 'b', 'c']
-    # print(s)
     main()

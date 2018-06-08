@@ -16,6 +16,10 @@ assert len(mylist) >= 1
 exec 'print "Hello World"'
 ```
 
+**装饰器装饰工厂函数**
++ 装饰器工厂函数接受某参数返回某装饰器
++ 装饰器接受函数，返回另一个函数，**原来的函数就不是本来的函数了**
+
 ## import
 引入自己写的模块
 ```py
@@ -32,56 +36,6 @@ def is_industry(col):
     if {i for i in 0, 1}.issuperset(set(col)):
         return True
     return False
-```
-
-**改动**
-+ 删除 `hist_residuals()`
-```py
-def hist_residuals(self, factor_returns):
-    """
-    get history residuals from regression results
-    :param factor_returns: DataFrame, factor returns as the regression results
-    :return: DataFrame with index as dates and columns as companies
-    """
-    # group by date
-    date, returns, company, factor = list(self.names.values())[:4]
-    grouped = self.x.groupby(self.x[date])
-
-    # get residuals respectively
-    def f(x, params):
-        return x[returns] - (x[factor] * next(params)).sum(axis=1)
-
-    results_residuals = None
-    try:
-        g = (list(factor_returns[factor].iloc[i]) for i in range(len(factor_returns)))
-        results_residuals = pd.DataFrame([list(f(group, g)) for _, group in grouped])
-    except StopIteration:
-        pass
-
-    results_residuals.columns = self.x[company].unique()
-    return results_residuals.applymap(lambda x: 0.0 if x < 0.01 else x)
-```
-+ 不需要预测 `factor_loading`
-```py
-def predict_factor_loadings(self, method, arg=None):
-    """
-    predict factor loadings
-    :param method: method to predict
-    :param arg: additional parameter used in prediction
-    :return: DataFrame with index as company and columns as factors
-    """
-    company, factor = list(self.names.values())[2:4]
-    if method == 'average':
-        predicts = self.x[factor].groupby(self.x[company]).mean()
-    elif method == 'ewma':
-        def f(x, a):
-            return x.ewm(alpha=a).mean()[-1:]
-
-        predicts = self.x[factor].groupby(self.x[company]).apply(f, a=arg)
-        predicts.index = self.x[company].unique()
-    else:
-        raise ValueError("predict_factor_loadings:undefined method" + method)
-    return predicts
 ```
 + `risk_structure` 不需要考虑股票的协方差
 + 回归时可能会出现多重共线性
@@ -133,6 +87,12 @@ def random_stocks(hs300, industry=None):
 + `reindex` 后要赋值回去，**否则不会改变**
 + `reindex` 和 `index=` 的区别是前者是重采样而后者是更换
 + `Index` 只有 `map` 方法没有 `apply` 方法
++ 只有 `Series` 有 `asfreq()` 方法
++ 只有 `Series` 以及 `DataFrame` 有 `resample` 方法
++ 多重索引有 `to_frame()` 方法方便转换为正常的 `DataFrame`
++ 多重索引有 `swaplevel([0, 1])` 方法可以转换 `level`
++ 多重索引有 `names` 属性
++ 可以直接多使用多重索引的数据框使用 `swaplevel`，这样可以用 `.loc[]` 选取想要的维度
 
 **分组和聚合**
 + `pd.qcut` 参数： `labels=False` `10`
