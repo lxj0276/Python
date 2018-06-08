@@ -17,12 +17,14 @@ def __predict(freq):
             assert len(real) > (12 if freq == 'M' else 0), 'Data Too Short'
 
             predicts = pd.DataFrame(columns=data['TICKER'].unique(), index=index.index)
-            for i in range((12 if freq == 'M' else 1), len(real) + 1):
-                predicts.iloc[i - 1] = real.iloc[(i - 12 if freq == 'M' else 0): i].ewm(alpha=0.8).mean().iloc[-1]
+            for i in range((1 if freq == 'M' else 1), len(real) + 1):
+                predicts.iloc[i - 1] = (real.iloc[(i - 12 if freq == 'M' and i > 12 else 0): i]
+                                        .ewm(alpha=0.8).mean().iloc[-1])
 
             predicts = predicts.shift(1)
             res = pd.concat([real.stack(), predicts.stack()], axis=1)
             res.columns = ['actual', 'predict']
+            res['predict'] = res['predict'].astype('float64')
             res[['actual', 'predict']] -= 1
             res.index.names = ['date', 'ticker']
             res = pd.concat([res, res.index.to_frame()], axis=1)
@@ -49,8 +51,27 @@ def predict_year_return():
     pass
 
 
-def predict_risk(returns, freq):
-    pass
+def get_risk(returns):
+    data = returns.unstack()
+    dates = data.index.tolist()
+
+    def na(d):
+        if d.iloc[:, -1].notna().any() and d.iloc[:, -1].isna().any():
+            d.iloc[:, -1] = d.iloc[:, -1].fillna(d.iloc[:, -1].mean(skipna=True))
+        else:
+            d = d.dropna(axis=1)
+        return d
+
+    actual, predict = {}, {}
+    for i in range(2, len(data['actual'])+1):
+        dt_real = data['actual'][i-12 if i > 12 else 0: i]
+        dt_predict = data['predict'][i-12 if i > 12 else 0: i]
+        dt_predict = pd.concat([dt_real.iloc[:-1], dt_predict.iloc[-1:]])
+
+        actual[dates[i - 1].year * 100 + dates[i - 1].month] = np.cov(na(dt_real).T)
+        predict[dates[i - 1].year * 100 + dates[i - 1].month] = np.cov(na(dt_predict).T)
+
+    return {'actual': actual, 'predict': predict}
 
 
 def main():
@@ -58,7 +79,7 @@ def main():
     data.index = pd.to_datetime(data.index.map(str))
     data['PCTCHG'] /= 100
     res = predict_month_return(data)
-    print(res.swaplevel(0, 1).loc[3145])
+    print(get_risk(res))
 
 
 if __name__ == '__main__':
