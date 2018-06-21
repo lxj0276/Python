@@ -1,6 +1,6 @@
 import pandas as pd
 import LargeAsset as La
-from Optimus import Optimus
+import FactorModel as Fm
 
 
 # 大类资产配置
@@ -16,7 +16,4 @@ predict_returns = res1.loc['2015-03']['predict']
 predict_risk = res2[201503]
 
 # 建立模型
-model = Optimus()
-model.psr = predict_returns
-model.rs = predict_risk
-print(model.min_risk(0.01))
+print(Fm.max_returns(predict_returns, predict_risk, 0.01))

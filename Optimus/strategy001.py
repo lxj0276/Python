@@ -1,5 +1,5 @@
 import pandas as pd
-from Optimus import Optimus
+from FactorModel import FactorModel
 
 
 # 读取数据
@@ -14,7 +14,7 @@ factors.remove('AnalystROEAdj')
 factors.remove('FreeCashFlow')
 
 # 多因子过程
-model = Optimus(data, factors)
+model = FactorModel(data, factors)
 model.set_names(freq='Month')
 
 # 以下过程除优化外都封装在了函数 model.factor_model()中
