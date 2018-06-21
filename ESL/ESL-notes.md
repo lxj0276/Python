@@ -121,3 +121,8 @@ $f_k(x) = \dfrac{1}{2\pi^{p/2}|\sum_k|^{1/2}}e^{-\frac{1}{2}(x-\mu_k)^T\sum_k^{-
 可以看到这是一个 `WLS` 估计的过程，这个算法就是迭代的 `WLS` 直到系数收敛，其中
 + $z = X\beta^{old}+W^{-1}(y-p)$
 + $W$ 是一个对角矩阵，对角元素是 $\hat p(1-\hat p)$
+
+**about WLS**
++ $(X^TWX)\hat \beta=X^TWy$
++ 令 $w_{ii} = \sqrt{W_{ii}}$
++ 有 $X'^TX'\hat\beta=x'^Ty'$ ，其中 $X'=wX, y'=wy$，形成了一个新的 `OLS` 回归
