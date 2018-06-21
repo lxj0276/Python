@@ -34,7 +34,7 @@ def __predict(freq):
                     return x.year * 100 + x.month
                 else:
                     return x.year
-            res[freq] = res['date'].apply(f)
+            res['period'] = res['date'].apply(f)
             return res
 
         return predict_at_freq
@@ -53,7 +53,7 @@ def predict_year_return():
 
 def get_risk(returns):
     data = returns.unstack()
-    dates = data.index.tolist()
+    dates = returns['period'].unique()
 
     def na(d):
         if d.iloc[:, -1].notna().any() and d.iloc[:, -1].isna().any():
@@ -68,19 +68,17 @@ def get_risk(returns):
         dt_predict = data['predict'][i-12 if i > 12 else 0: i]
         dt_predict = pd.concat([dt_real.iloc[:-1], dt_predict.iloc[-1:]])
 
-        actual[dates[i - 1].year * 100 + dates[i - 1].month] = np.cov(na(dt_real).T)
-        predict[dates[i - 1].year * 100 + dates[i - 1].month] = np.cov(na(dt_predict).T)
+        actual[dates[i - 1]] = np.cov(na(dt_real).T)
+        predict[dates[i - 1]] = np.cov(na(dt_predict).T)
 
     return {'actual': actual, 'predict': predict}
 
 
-def main():
+if __name__ == '__main__':
     data = pd.read_csv('data/IndexPrice.csv', index_col='DATES')
     data.index = pd.to_datetime(data.index.map(str))
     data['PCTCHG'] /= 100
-    res = predict_month_return(data)
+    res = predict_year_return(data)
+    print(res)
     print(get_risk(res))
 
-
-if __name__ == '__main__':
-    main()

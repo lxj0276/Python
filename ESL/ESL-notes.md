@@ -84,3 +84,40 @@ $X=UDV^T$
 $XV=UDV^TV$
 $XV=UD$
 $Xv_m=Ud_m$
+
+## Linear Method in Classification
++ `discriminant functions` $\delta_k(x)$ ，在这个函数取得最大值时分到这一类
+
+### 简单线性回归
+将类别划分为一系列 `indicator`，若有 `K` 类，则是 $N \times K$ 的矩阵 $Y$ 利用线性回归的表达式
++ $\hat Y = X(X^TX)^{-1}X^TY$
++ 得到系数矩阵 $\hat B=(X^TX)^{-1}X^TY$
+
+由特性可知 `indicator` 的和为1
+
+### Linear Discriminant Analysis
+在贝叶斯定理下：
++ $Pr(G=k|X=x)=\dfrac{f_k(x)\pi_k}{\sum\nolimits_{l=1}^{K}f_l(x)\pi_l}$
+
+可见，$f_k(x)$ 和 $Pr(G=k|X=x)$ 有一样的能力
+
+`LDA` 对 $f_k(x)$ 做出了多元正太分布的假设。
+$f_k(x) = \dfrac{1}{2\pi^{p/2}|\sum_k|^{1/2}}e^{-\frac{1}{2}(x-\mu_k)^T\sum_k^{-1}(x-\mu_k)}$
+
+其中 $\sum_k$ 为 N元 $X_1, X_2, ..., X_N$ 的协方差矩阵，对角元素为 $\sigma_{x_j}^2$
+
+对于 `LDA` ，假设 $\sum_k$ 在各类中是相同的，因此二次项可以通过 $\delta_k(x)$ 相减抵消。
+
+对于 `Quadratic DA` 不能抵消，
+
+### Logistic Regression
+
+![Logistic Regression ](logisticRegression.png)
+
+可以用最大似然进行估计，利用一阶导和二阶导进行牛顿逼近
+
+![Newton-Raphson](newton-raphson.png)
+
+可以看到这是一个 `WLS` 估计的过程，这个算法就是迭代的 `WLS` 直到系数收敛，其中
++ $z = X\beta^{old}+W^{-1}(y-p)$
++ $W$ 是一个对角矩阵，对角元素是 $\hat p(1-\hat p)$
