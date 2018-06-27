@@ -30,3 +30,7 @@
 
 + `np.nansum()` 含缺失值的求和
 `np.nancumsum()` 一系列含有 `nan` 求值ֵ
+
++ `np.reshape(-1)` 多维转一维，同样也可以一维转多维 **不产生复制**
+
++ `matlab` 中 `std` 为 `ny.std(ddof=1)` 要设置自由度
