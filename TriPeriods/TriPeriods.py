@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+from pylab import mpl
 from dateutil.parser import parse
+from datetime import timedelta
 
 
 class BktestParam:
@@ -36,16 +39,38 @@ class GlobalParam:
     yoy_dates = None
 
 
+class BktestResult:
+    indus_order = None
+    w = None
+    nav = None
+    nav_perf = None
+
+
 def date_num(date_str):
     """
     将日期字符串转换为 MatLab 风格的日期
-    :param date_str: 日期字符串
-    :return:
+    :param date_str:    日期字符串
+    :return:            MatLab 风格的日期数值
     """
     return (parse(date_str) - parse('0001-01-01')).days + 367
 
 
+def num_date(num):
+    """
+    将 MatLab风格的日期数转换为字符串
+    :param num:         MatLab风格的日期数值
+    :return:            日期字符串
+    """
+    n = int(num)
+    return (parse('0001-01-01') + timedelta(days=n-367)).strftime("%Y-%m-%d")
+
+
 def gen_global_param(data, industry):
+    """
+    获取全局参数 GlobalParam
+    :param data:        各个行业的净值数据
+    :param industry:    行业分类
+    """
     # 合成大类板块，计算日频收盘价
     small_indus_return = (data['close'] / data['close'].shift(1) - 1).dropna()
     large_indus_return = np.zeros((len(small_indus_return), GlobalParam.indus_num))
@@ -141,10 +166,10 @@ def cal_indus_order(yoy_wave, yoy_base, periods, window_size, fft_size, gauss_al
             y_len = len(y)
             # 样本内回归，获取回归系数
             x = np.column_stack((base_filter[:y_len, ], np.ones(y_len)))
-            b = np.linalg.lstsq(x, y)[0]
+            b = np.linalg.lstsq(x, y, rcond=None)[0]
             # 拟合值和预测值
-            cur = np.dot(np.append(np.asarray(base_filter[y_len - 1,]), 1), b)
-            predict = np.dot(np.append(np.asarray(base_filter[-1,]), 1), b)
+            cur = np.dot(np.append(np.asarray(base_filter[y_len - 1, ]), 1), b)
+            predict = np.dot(np.append(np.asarray(base_filter[-1, ]), 1), b)
             change[p - window_size, i] = predict - cur
 
     indus_order = np.zeros_like(change)
@@ -152,8 +177,8 @@ def cal_indus_order(yoy_wave, yoy_base, periods, window_size, fft_size, gauss_al
         """
         存疑，为什么原始代码里sort了两次
         """
-        indus_order[p,] = np.argsort(change[p,])[::-1]
-        indus_order[p,] = np.argsort(indus_order[p,])
+        indus_order[p, ] = np.argsort(change[p, ])[::-1]
+        indus_order[p, ] = np.argsort(indus_order[p, ])
 
     return indus_order
 
@@ -173,7 +198,7 @@ def cal_long_weight(indus_order, long_weight):
 
     # 排名替换
     for i in range(len(long_weight)):
-        w[indus_order == i] = long_weight(i)
+        w[indus_order == i] = long_weight[i]
 
     return w.T
 
@@ -187,21 +212,21 @@ def cal_nav(w, bktest_param, global_param):
     :return:                各组合净值走势
     """
     # 获取参数，初始化结果
-    daily_dates = global_param.daily_dates  # 全日期序列
-    close = global_param.daily_close  # 全日期对应的行业收盘点位
-    start_loc = bktest_param.start_loc  # 回测起始日期在全日期序列中的位置
-    end_loc = bktest_param.end_loc  # 回测结束日期在全日期序列中的位置
+    daily_dates = global_param.daily_dates          # 全日期序列
+    close = global_param.daily_close                # 全日期对应的行业收盘点位
+    start_loc = bktest_param.start_loc              # 回测起始日期在全日期序列中的位置
+    end_loc = bktest_param.end_loc                  # 回测结束日期在全日期序列中的位置
     commission_rate = bktest_param.commission_rate  # 交易费率
-    refresh_dates = bktest_param.refresh_dates  # 回测区间内的调仓日期序列
-    predict_dates = bktest_param.predict_dates  # 所有有效预测截面日期
-    nav = np.zeros((end_loc - start_loc + 1))  # 初始化结果
+    refresh_dates = bktest_param.refresh_dates      # 回测区间内的调仓日期序列
+    predict_dates = bktest_param.predict_dates      # 所有有效预测截面日期
+    nav = np.zeros((end_loc - start_loc + 1))       # 初始化结果
 
     # 起始日就是第一个换仓日，这里构建初始仓位
     refresh_index = 1
-    cur_date_index = start_loc  # 与全日期序列对齐
-    prev_date_index = cur_date_index - 1  # 与全日期序列对齐
+    cur_date_index = start_loc                                  # 与全日期序列对齐
+    prev_date_index = cur_date_index - 1                        # 与全日期序列对齐
     prev_date = daily_dates[prev_date_index]
-    prev_panel_index = list(daily_dates).index(prev_date)  # 有效预测序列 yoy_dates 对齐, 便与w对齐
+    prev_panel_index = list(predict_dates).index(prev_date)     # 有效预测序列 yoy_dates 对齐, 便与w对齐
     refresh_w = w[:, prev_panel_index]
 
     # 建仓完毕，扣除手续费
@@ -212,10 +237,10 @@ def cal_nav(w, bktest_param, global_param):
     for d in range(start_loc + 1, end_loc + 1):
         # 执行净值更新，分空仓和不空仓情形
         if sum(last_portfolio) == 0:
-            nav[d - start_loc + 1] = nav[d - start_loc]
+            nav[d - start_loc] = nav[d - start_loc]
         else:
-            last_portfolio = close[d,] / close[d - 1,] * last_portfolio
-            nav[d - start_loc + 1] = np.nansum(last_portfolio)
+            last_portfolio = close[d, ] / close[d - 1, ] * last_portfolio
+            nav[d - start_loc] = np.nansum(last_portfolio)
 
         # 判断当前日期是否为新的调仓日，是则进行调仓
         if refresh_index < len(refresh_dates) - 1 and daily_dates[d] == refresh_dates[refresh_index + 1]:
@@ -233,8 +258,8 @@ def cal_nav(w, bktest_param, global_param):
 
             # 根据前后权重差别计算换手率，调整净值
             refresh_turn = sum(abs(refresh_w - last_w))
-            nav[d - start_loc + 1] = nav[d - start_loc + 1] * (1 - refresh_turn * commission_rate)
-            last_portfolio = nav[d - start_loc + 1] * refresh_w
+            nav[d - start_loc + 1] = nav[d - start_loc] * (1 - refresh_turn * commission_rate)
+            last_portfolio = nav[d - start_loc] * refresh_w
 
     return nav
 
@@ -328,6 +353,9 @@ def performance(nav, benchmark, refresh_index):
 
 
 def bktest_unit():
+    """
+    回测
+    """
     # 有效截面日期序列
     BktestParam.predict_dates = GlobalParam.yoy_dates[BktestParam.window_size-1:]
 
@@ -359,17 +387,149 @@ def bktest_unit():
                                             BktestParam.refresh_dates))
 
     BktestParam.monthly_refresh_dates = BktestParam.refresh_dates
+    BktestResult.indus_order = cal_indus_order(GlobalParam.yoy_indus, GlobalParam.yoy_base, BktestParam.periods,
+                                               BktestParam.window_size, BktestParam.fft_size, BktestParam.gauss_alpha)
+
+    BktestResult.w = cal_long_weight(BktestResult.indus_order, BktestParam.long_weight)
+    BktestResult.nav = cal_nav(BktestResult.w, BktestParam, GlobalParam)
+
+    index = np.arange(len(BktestParam.back_dates))
+    refresh_index = index[[(i in BktestParam.monthly_refresh_dates) for i in BktestParam.back_dates]]
+    base = GlobalParam.base_nav[BktestParam.start_loc: BktestParam.end_loc+1]
+    base = base / base[0]
+    BktestResult.nav_perf = performance(BktestResult.nav, base, refresh_index)
+
+    # 显示回测结果
+    print('------------------------------------')
+    print("实际回测开始时间[{}]，结束时间[{}]\n".format(num_date(BktestParam.start_date),
+                                           num_date(BktestParam.end_date)))
+    print("组合年化{:.2f}%，基准年化{:.2f}%，超额年化{:.2f}%".format(100 * BktestResult.nav_perf.iloc[0, 0],
+          100 * BktestResult.nav_perf.iloc[1, 0],
+          100 * BktestResult.nav_perf.iloc[0, 4]))
+
+    indus_nav = GlobalParam.daily_close[BktestParam.start_loc: BktestParam.end_loc + 1]
+    indus_nav = indus_nav / indus_nav[0, :]
+
+    index = pd.to_datetime(pd.Index([num_date(i) for i in BktestParam.back_dates]))
+
+    mpl.rcParams['font.sans-serif'] = ['FangSong']  # 指定默认字体
+    mpl.rcParams['axes.unicode_minus'] = False      # 解决保存图像是负号'-'显示为方块的问题
+
+    plt.plot(index, BktestResult.nav, linewidth=1.0, label='组合', color='red')
+    plt.plot(index, base, linewidth=1.0, label='基准', color='blue')
+    plt.plot(index, indus_nav, linewidth=0.5)
+    labels = ['组合', '基准'] + GlobalParam.indus_name
+    plt.legend(labels)
+    plt.title("周期因子[{}] 训练长度[{}] 滤波参数[{}]".format(
+              BktestParam.periods, BktestParam.window_size, BktestParam.gauss_alpha))
+    plt.xlabel("时间")
+    plt.ylabel("净值")
+    plt.show()
+
+
+def portfolio():
+    """
+    运行完策略后，将每一期的预测排名和真实的行业走势写入文件，用于比较
+    """
+    indus_name = ['上游', '中游', '下游', '金融', '消费', '成长']
+    indus_order = BktestResult.indus_order
+    predict_dates = BktestParam.predict_dates
+
+    # 获取预测日期对应的收盘价
+    index = [(i in predict_dates) for i in GlobalParam.daily_dates]
+    monthly_close = GlobalParam.daily_close[index, :]
+    monthly_return = monthly_close[1:, ] / monthly_close[:-1, ] - 1
+
+    # 最后一个预测排名无法获得实际的验证结果
+    indus_order = indus_order[:-1, ]
+    predict_dates = predict_dates[:-1]
+
+    # 将预测结果和实际收益率写入文件
+    m, n = indus_order.shape
+    columns = ["预测第{}".format(i + 1) for i in range(n)]
+    index = [num_date(i) for i in predict_dates]
+    full_info = pd.DataFrame(np.empty((m, n)), dtype='str', index=index, columns=columns)
+    stat_info = pd.DataFrame(np.empty((m, n)), dtype='int32', index=index, columns=columns)
+    for i in range(m):
+        # 预测排名
+        predict_order = indus_order[i, ]
+        # 实际收益率及其排名
+        indus_return = monthly_return[i, ]
+        index_order = np.argsort(indus_return)[::-1]
+        real_order = np.argsort(index_order) + 1
+        # 写入文件
+        for j in range(n):
+            index = list(predict_order).index(j)
+            full_info.iloc[i, j] = (indus_name[index] + "({}, {:.2f}%)".format(real_order[index], indus_return[index]))
+            stat_info.iloc[i, j] = real_order[index]
+
+    large_name = GlobalParam.indus_name
+    columns = ['持仓', '策略', '排名'] + large_name
+    index = [num_date(i) for i in predict_dates]
+    result = pd.DataFrame(np.empty((m, n+3)), dtype='float64', index=index, columns=columns)
+    result.iloc[:, 0].astype('str')
+    result.iloc[:, 2].astype('int32')
+
+    for i in range(m):
+        # 预测排名
+        predict_order = indus_order[i, ]
+        # 实际收益率及其排名
+        indus_return = monthly_return[i, ]
+        index_order = np.argsort(indus_return)[::-1]
+        real_order = np.argsort(index_order) + 1
+        index = list(predict_order).index(0)
+        result.iloc[i, 0] = large_name[index]
+        result.iloc[i, 1] = indus_return[index]
+        result.iloc[i, 2] = real_order[index]
+        result.iloc[i, 3:] = indus_return
+
+    try:
+        writer = pd.ExcelWriter("result/持仓明细.xlsx")
+        full_info.to_excel(writer, "明细")
+        stat_info.to_excel(writer, "排名")
+        result.to_excel(writer, "报告")
+        writer.save()
+    except FileNotFoundError:
+        print("在result文件中创建 '持仓明细.xlsx' 后继续此操作")
 
 
 if __name__ == '__main__':
-    # nav = [1, 3, 9, 4, 6, 5, 2, 7, 8]
-    # benchmark = [1, 4, 7, 5, 6, 4, 2, 5, 6]
-    # index = [2, 5, 8]
-    # print(performance(nav, benchmark, index))
-    df = np.arange(9).reshape(3, 3)
-    # df += 1
-    # print(np.row_stack((np.ones(3), df)))
-    # print(df.cumprod(axis=0)[:])
-    BktestParam.new = 1
-    a = np.arange(3, 7)
+    sw_indus = pd.read_csv('data/sw_indus.csv', encoding='GBK')
+    close = pd.read_csv('data/close.csv', header=None)
+    daily_dates = pd.read_csv('data/daily_dates.csv', header=None)
+    monthly_dates = pd.read_csv('data/monthly_dates.csv', header=None)
+    indus_num = 28
+    data = {
+        'close': close,
+        'indus_num': indus_num,
+        'daily_dates': daily_dates,
+        'monthly_dates': monthly_dates
+    }
 
+    gen_global_param(data, sw_indus)
+
+    bktest_unit()
+
+    # print(GlobalParam.daily_close)
+    # print(GlobalParam.daily_dates)
+    # print(GlobalParam.base_nav)
+    # print(GlobalParam.monthly_indus)
+    # print(GlobalParam.monthly_base)
+    # print(GlobalParam.monthly_dates)
+    # print(GlobalParam.yoy_indus)
+    # print(GlobalParam.yoy_base)
+    # print(GlobalParam.yoy_dates)
+
+    # print(BktestParam.predict_dates)
+    # print(BktestParam.start_date)
+    # print(BktestParam.end_date)
+    # print(BktestParam.refresh_dates)
+    # print(BktestParam.start_loc)
+    # print(BktestParam.end_loc)
+    # print(BktestParam.back_dates)
+    # print(BktestParam.monthly_refresh_dates)
+    #
+    # print(BktestResult.indus_order)
+    # print(BktestResult.w.T)
+    # print(BktestResult.nav)
+    # print(BktestResult.nav_perf)
