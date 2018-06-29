@@ -44,6 +44,7 @@ class BktestResult:
     w = None
     nav = None
     nav_perf = None
+    df = None
 
 
 def date_num(date_str):
@@ -411,6 +412,11 @@ def bktest_unit():
     indus_nav = indus_nav / indus_nav[0, :]
 
     index = pd.to_datetime(pd.Index([num_date(i) for i in BktestParam.back_dates]))
+    df = pd.DataFrame(np.round(indus_nav, 2), index=index, columns=['a', 'b', 'c', 'd', 'e', 'f'])
+    df['base'] = np.round(base, 2)
+    df['portfolio'] = np.round(BktestResult.nav, 2)
+    df['index'] = [num_date(i) for i in BktestParam.back_dates]
+    BktestResult.df = df
 
     mpl.rcParams['font.sans-serif'] = ['FangSong']  # 指定默认字体
     mpl.rcParams['axes.unicode_minus'] = False      # 解决保存图像是负号'-'显示为方块的问题
@@ -424,7 +430,7 @@ def bktest_unit():
               BktestParam.periods, BktestParam.window_size, BktestParam.gauss_alpha))
     plt.xlabel("时间")
     plt.ylabel("净值")
-    plt.show()
+    # plt.show()
 
 
 def portfolio():
@@ -509,7 +515,7 @@ if __name__ == '__main__':
     gen_global_param(data, sw_indus)
 
     bktest_unit()
-
+    print(BktestResult.nav_perf)
     # print(GlobalParam.daily_close)
     # print(GlobalParam.daily_dates)
     # print(GlobalParam.base_nav)
