@@ -396,41 +396,19 @@ def bktest_unit():
 
     index = np.arange(len(BktestParam.back_dates))
     refresh_index = index[[(i in BktestParam.monthly_refresh_dates) for i in BktestParam.back_dates]]
+
     base = GlobalParam.base_nav[BktestParam.start_loc: BktestParam.end_loc+1]
     base = base / base[0]
     BktestResult.nav_perf = performance(BktestResult.nav, base, refresh_index)
 
-    # 显示回测结果
-    print('------------------------------------')
-    print("实际回测开始时间[{}]，结束时间[{}]\n".format(num_date(BktestParam.start_date),
-                                           num_date(BktestParam.end_date)))
-    print("组合年化{:.2f}%，基准年化{:.2f}%，超额年化{:.2f}%".format(100 * BktestResult.nav_perf.iloc[0, 0],
-          100 * BktestResult.nav_perf.iloc[1, 0],
-          100 * BktestResult.nav_perf.iloc[0, 4]))
-
     indus_nav = GlobalParam.daily_close[BktestParam.start_loc: BktestParam.end_loc + 1]
     indus_nav = indus_nav / indus_nav[0, :]
 
-    index = pd.to_datetime(pd.Index([num_date(i) for i in BktestParam.back_dates]))
     df = pd.DataFrame(np.round(indus_nav, 2), index=index, columns=['a', 'b', 'c', 'd', 'e', 'f'])
     df['base'] = np.round(base, 2)
     df['portfolio'] = np.round(BktestResult.nav, 2)
     df['index'] = [num_date(i) for i in BktestParam.back_dates]
     BktestResult.df = df
-
-    mpl.rcParams['font.sans-serif'] = ['FangSong']  # 指定默认字体
-    mpl.rcParams['axes.unicode_minus'] = False      # 解决保存图像是负号'-'显示为方块的问题
-
-    plt.plot(index, BktestResult.nav, linewidth=1.0, label='组合', color='red')
-    plt.plot(index, base, linewidth=1.0, label='基准', color='blue')
-    plt.plot(index, indus_nav, linewidth=0.5)
-    labels = ['组合', '基准'] + GlobalParam.indus_name
-    plt.legend(labels)
-    plt.title("周期因子[{}] 训练长度[{}] 滤波参数[{}]".format(
-              BktestParam.periods, BktestParam.window_size, BktestParam.gauss_alpha))
-    plt.xlabel("时间")
-    plt.ylabel("净值")
-    # plt.show()
 
 
 def portfolio():
@@ -497,6 +475,39 @@ def portfolio():
         writer.save()
     except FileNotFoundError:
         print("在result文件中创建 '持仓明细.xlsx' 后继续此操作")
+
+
+def show_result():
+    """
+    显示结果
+    """
+    print('------------------------------------')
+    print("实际回测开始时间[{}]，结束时间[{}]\n".format(num_date(BktestParam.start_date),
+                                           num_date(BktestParam.end_date)))
+    print("组合年化{:.2f}%，基准年化{:.2f}%，超额年化{:.2f}%".format(100 * BktestResult.nav_perf.iloc[0, 0],
+          100 * BktestResult.nav_perf.iloc[1, 0],
+          100 * BktestResult.nav_perf.iloc[0, 4]))
+
+    indus_nav = GlobalParam.daily_close[BktestParam.start_loc: BktestParam.end_loc + 1]
+    indus_nav = indus_nav / indus_nav[0, :]
+    base = GlobalParam.base_nav[BktestParam.start_loc: BktestParam.end_loc + 1]
+    base = base / base[0]
+
+    index = pd.to_datetime(pd.Index([num_date(i) for i in BktestParam.back_dates]))
+
+    mpl.rcParams['font.sans-serif'] = ['FangSong']  # 指定默认字体
+    mpl.rcParams['axes.unicode_minus'] = False      # 解决保存图像是负号'-'显示为方块的问题
+
+    plt.plot(index, BktestResult.nav, linewidth=1.0, label='组合', color='red')
+    plt.plot(index, base, linewidth=1.0, label='基准', color='blue')
+    plt.plot(index, indus_nav, linewidth=0.5)
+    labels = ['组合', '基准'] + GlobalParam.indus_name
+    plt.legend(labels)
+    plt.title("周期因子[{}] 训练长度[{}] 滤波参数[{}]".format(
+              BktestParam.periods, BktestParam.window_size, BktestParam.gauss_alpha))
+    plt.xlabel("时间")
+    plt.ylabel("净值")
+    plt.show()
 
 
 if __name__ == '__main__':

@@ -177,22 +177,21 @@ $.ajax({
         x1[8].innerHTML = res.excess_draw.p;
       base[8].innerHTML = res.excess_draw.b;
     	$.notify({
-        	icon: 'pe-7s-gift',
+        	icon: "nc-icon nc-app",
         	message: "数据更新成功"
-
       },{
-          type: 'success',
-          timer: 4000
+          type: 'info',
+          timer: 4000,
       });
     },
     error: function (msg) {
     	$.notify({
-        	icon: 'pe-7s-gift',
+        	icon: "nc-icon nc-app",
         	message: "数据更新失败"
 
       },{
           type: 'danger',
-          timer: 4000
+          timer: 4000,
       });
     }
     });

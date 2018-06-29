@@ -86,9 +86,31 @@
                                     <h4 class="card-title">回测结果</h4>
                                     <p class="card-category">三周期</p>
                                 </div>
+                                <div class="card-body table-full-width table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <th>年化收益率</th>
+                                            <th>夏普比率</th>
+                                            <th>最大回撤</th>
+                                            <th>年化超额收益率</th>
+                                            <th>信息比率</th>
+                                            <th>相对月基准胜率</th>
+                                        </thead>
+                                        <tbody>
+                                            <tr id="p1">
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>                       <td></td>
+                                                <td></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                                 <div class="card-body ">
                                     <div id="main" style="width: 600px;height:400px;"></div>
                                 </div>
+
                                 <div class="card-footer ">
                                     <hr>
                                     <div class="stats">
@@ -97,8 +119,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-
                     </div>
                 </div>
             </div>
@@ -244,18 +264,11 @@ $(document).ready(function() {
         dataType:'json',
         success: function (res) {
           initDashboardPageCharts(res);
-        	$.notify({
-            	icon: 'pe-7s-gift',
-            	message: "数据更新成功"
-
-          },{
-              type: 'success',
-              timer: 4000
-          });
+          performance();
         },
         error: function (msg) {
         	$.notify({
-            	icon: 'pe-7s-gift',
+            	icon: "nc-icon nc-app",
             	message: "数据更新失败"
 
           },{
@@ -266,6 +279,40 @@ $(document).ready(function() {
     });
 });
 
+function performance(){
+  $.ajax({
+    url: 'http://localhost:5000/performance',
+    type: 'GET',
+    dataType:'json',
+    success: function (res) {
+      x1 = $("#p1").children().toArray();
+
+        x1[0].innerHTML = res.return.p;
+        x1[1].innerHTML = res.sharp.p;
+        x1[2].innerHTML = res.drawdown.p;
+        x1[3].innerHTML = res.excess.p;
+        x1[4].innerHTML = res.ic.p;
+        x1[5].innerHTML = res.win.p;
+    	$.notify({
+        	icon: "nc-icon nc-app",
+        	message: "数据更新成功"
+      },{
+          type: 'info',
+          timer: 4000
+      });
+    },
+    error: function (msg) {
+    	$.notify({
+        	icon: "nc-icon nc-app",
+        	message: "数据更新失败"
+
+      },{
+          type: 'danger',
+          timer: 4000,
+      });
+    }
+    });
+}
 function initDashboardPageCharts(data) {
   var myChart = echarts.init(document.getElementById('main'));
 

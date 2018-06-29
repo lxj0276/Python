@@ -186,21 +186,24 @@ $("#backtest").click(function(){
     dataType:'text',
     success:function(data){
     	$.notify({
-        	icon: 'pe-7s-gift',
+        	icon: "nc-icon nc-app",
         	message: "回测成功，请进入回测结果页面查看结果"
 
       },{
-          type: 'success',
+          type: 'info',
           timer: 4000
       });
+      setTimeout(function(){
+        $(location).attr('href', './dashboard.html')
+      }, 2000);
     },
     error:function(XMLHttpRequest, textStatus, errorThrown){
       $.notify({
-        	icon: 'pe-7s-gift',
+        	icon: "nc-icon nc-app",
         	message: "请求失败"
 
       },{
-          type: 'warning',
+          type: 'danger',
           timer: 4000
       });
     }
