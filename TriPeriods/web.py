@@ -1,7 +1,7 @@
 from flask import Flask, request, make_response
 import TriPeriods as Tri
 import pandas as pd
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static", static_url_path='')
 
 
 def init_tri():
@@ -75,6 +75,26 @@ def back_test():
         Tri.bktest_unit()
 
         return res
+
+
+@app.route('/')
+def homepage():
+    return app.send_static_file("./html/dashboard.html")
+
+
+@app.route('/dashboard.html')
+def homepage2():
+    return app.send_static_file("./html/dashboard.html")
+
+
+@app.route('/user.html')
+def setting():
+    return app.send_static_file("./html/user.html")
+
+
+@app.route('/table.html')
+def table():
+    return app.send_static_file("./html/table.html")
 
 
 if __name__ == '__main__':
