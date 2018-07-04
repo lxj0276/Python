@@ -1,6 +1,9 @@
-from flask import Flask, request, make_response
-import TriPeriods as Tri
 import pandas as pd
+
+import TriPeriods as Tri
+from download import download
+
+from flask import Flask, request, make_response
 app = Flask(__name__, static_folder="static", static_url_path='')
 
 
@@ -18,7 +21,6 @@ def init_tri():
     }
 
     Tri.gen_global_param(data, sw_indus)
-    Tri.bktest_unit()
 
 
 @app.route('/result')
@@ -58,12 +60,6 @@ def back_test():
 
         content = request.form.to_dict()
 
-        res = make_response("hello")
-
-        res.headers['Access-Control-Allow-Origin'] = '*'
-        res.headers['Access-Control-Allow-Methods'] = 'POST'
-        res.headers['Access-Control-Allow-Headers'] = 'x-requested-with,content-type'
-
         Tri.BktestParam.init_period = [content['begin'], content['end']]
         Tri.BktestParam.commission_rate = float(content['commission'])
         Tri.BktestParam.periods = [int(i) for i in content['period'].split(',')]
@@ -73,6 +69,29 @@ def back_test():
         Tri.BktestParam.long_weight = [float(i) for i in content['long'].split(',')]
 
         Tri.bktest_unit()
+
+        res = make_response(Tri.BktestResult.df.T.to_json(orient='values'))
+        res.headers['Access-Control-Allow-Origin'] = '*'
+        res.headers['Access-Control-Allow-Methods'] = 'POST'
+        res.headers['Access-Control-Allow-Headers'] = 'x-requested-with,content-type'
+
+        return res
+
+
+@app.route('/dataset', methods=['POST'])
+def dataset():
+    if request.method == 'POST' and request.form:
+
+        content = request.form.to_dict()
+        res = make_response("hello")
+
+        res.headers['Access-Control-Allow-Origin'] = '*'
+        res.headers['Access-Control-Allow-Methods'] = 'POST'
+        res.headers['Access-Control-Allow-Headers'] = 'x-requested-with,content-type'
+
+        begin, end = [content['begin'], content['end']]
+        download(begin, end)    # 下载数据
+        init_tri()              # 重新初始化，载入数据
 
         return res
 

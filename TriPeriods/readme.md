@@ -27,6 +27,16 @@ result.to_excel(writer, "报告")
 writer.save()
 ```
 
++ 日期与日期偏移
+```py
+from pandas.tseries.offsets import MonthEnd
+from dateutil.parser import parse
+
+
+print(parse('2018-01-07') - MonthEnd())
+```
+可以轻松获得 `2017-12-31`
+
 ## numpy
 **numpy不支持字符串存储**
 

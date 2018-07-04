@@ -363,7 +363,8 @@ def bktest_unit():
     # 获取调仓日期序列，按下月月初调仓，注意边界调整
     index = np.arange(len(GlobalParam.daily_dates))
     predict_dates_index = index[[(i in BktestParam.predict_dates) for i in GlobalParam.daily_dates]]
-    if predict_dates_index[-1] + 1 <= len(GlobalParam.daily_dates):
+
+    if predict_dates_index[-1] + 1 < len(GlobalParam.daily_dates):
         BktestParam.refresh_dates = GlobalParam.daily_dates[predict_dates_index + 1]
     else:
         BktestParam.refresh_dates = GlobalParam.daily_dates[predict_dates_index[:-1] + 1]
@@ -507,14 +508,14 @@ def show_result():
               BktestParam.periods, BktestParam.window_size, BktestParam.gauss_alpha))
     plt.xlabel("时间")
     plt.ylabel("净值")
-    plt.show()
+    # plt.show()
 
 
 if __name__ == '__main__':
-    sw_indus = pd.read_csv('data/sw_indus.csv', encoding='GBK')
-    close = pd.read_csv('data/close.csv', header=None)
-    daily_dates = pd.read_csv('data/daily_dates.csv', header=None)
-    monthly_dates = pd.read_csv('data/monthly_dates.csv', header=None)
+    sw_indus = pd.read_csv('mydata/sw_indus.csv', encoding='GBK')
+    close = pd.read_csv('mydata/close.csv', header=None)
+    daily_dates = pd.read_csv('mydata/daily_dates.csv', header=None)
+    monthly_dates = pd.read_csv('mydata/monthly_dates.csv', header=None)
     indus_num = 28
     data = {
         'close': close,
@@ -524,9 +525,8 @@ if __name__ == '__main__':
     }
 
     gen_global_param(data, sw_indus)
-
     bktest_unit()
-    print(BktestResult.nav_perf)
+    show_result()
     # print(GlobalParam.daily_close)
     # print(GlobalParam.daily_dates)
     # print(GlobalParam.base_nav)

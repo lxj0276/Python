@@ -36,19 +36,7 @@
                     <li class="nav-item active">
                         <a class="nav-link" href="dashboard.html">
                             <i class="nc-icon nc-chart-pie-35"></i>
-                            <p>回测结果</p>
-                        </a>
-                    </li>
-                    <li>
-                        <a class="nav-link" href="./user.html">
-                            <i class="nc-icon nc-circle-09"></i>
-                            <p>回测参数</p>
-                        </a>
-                    </li>
-                    <li>
-                        <a class="nav-link" href="./table.html">
-                            <i class="nc-icon nc-notes"></i>
-                            <p>策略表现</p>
+                            <p>策略回测</p>
                         </a>
                     </li>
                 </ul>
@@ -58,18 +46,17 @@
             <!-- Navbar -->
             <nav class="navbar navbar-expand-lg " color-on-scroll="500">
                 <div class=" container-fluid  ">
-                    <a class="navbar-brand" href="#pablo"> 回测结果 </a>
+                    <a class="navbar-brand" href="#pablo"> 策略回测 </a>
                     <button href="" class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" aria-controls="navigation-index" aria-expanded="false" aria-label="Toggle navigation">
                         <span class="navbar-toggler-bar burger-lines"></span>
                         <span class="navbar-toggler-bar burger-lines"></span>
                         <span class="navbar-toggler-bar burger-lines"></span>
                     </button>
                     <div class="collapse navbar-collapse justify-content-end" id="navigation">
-                        <ul class="nav navbar-nav mr-auto">
+                        <ul class="navbar-nav ml-auto">
                             <li class="nav-item">
-                                <a href="#" class="nav-link" data-toggle="dropdown">
-                                    <i class="nc-icon nc-palette"></i>
-                                    <span class="d-lg-none">回测结果</span>
+                                <a class="nav-link" data-toggle="modal" data-target="#myModal">
+                                    <span class="no-icon">数据</span>
                                 </a>
                             </li>
                         </ul>
@@ -80,6 +67,87 @@
             <div class="content">
                 <div class="container-fluid">
                     <div class="row">
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">回测参数</h4>
+                                </div>
+                                <div class="card-body">
+                                    <form id="mainForm"  action="http://localhost:5000/back_test"
+                                    method="post">
+                                        <div class="row">
+                                            <div class="col-md-6 pr-1">
+                                                <div class="form-group">
+                                                    <label>回测开始日期</label>
+                                                    <input type="text" class="form-control" placeholder="开始日期" value="2005-03-01"
+                                                    name="begin">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6 pl-1">
+                                                <div class="form-group">
+                                                    <label>回测结束日期</label>
+                                                    <input type="text" class="form-control" placeholder="结束日期，输入形式如 2000-01-01" value="2018-01-31"
+                                                    name="end">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 pr-1">
+                                                <div class="form-group">
+                                                    <label>费率</label>
+                                                    <input type="text" class="form-control" placeholder="费率eg: 0.1" value="0"
+                                                    name="commission">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6 pl-1">
+                                                <div class="form-group">
+                                                    <label>持仓</label>
+                                                    <input type="text" class="form-control" placeholder="持仓序列，多个持仓时输入eg: 0.5,0.3,02" value="1"
+                                                    name="long">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4 pr-1">
+                                                <div class="form-group">
+                                                    <label>窗口大小</label>
+                                                    <input type="text" class="form-control" placeholder="窗口大小" value="50"
+                                                    name="window">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 px-1">
+                                                <div class="form-group">
+                                                    <label>傅里叶参数</label>
+                                                    <input type="text" class="form-control" placeholder="傅里叶长度" value="4096"
+                                                    name="fft">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 pl-1">
+                                                <div class="form-group">
+                                                    <label>高斯参数</label>
+                                                    <input type="text" class="form-control" placeholder="高斯参数"
+                                                    value="10"
+                                                    name="gauss">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                <div class="form-group">
+                                                    <label>三周期</label>
+                                                    <input type="text" class="form-control" placeholder="三周期长度如 21,42,100" value="21,42,100"
+                                                    name="period">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="clearfix"></div>
+                                    </form>
+                                    <button id="backtest" type="button" class="btn btn-info btn-fill pull-right">开始回测</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row" id="backtest_result">
                         <div class="col-md-8">
                             <div class="card ">
                                 <div class="card-header ">
@@ -120,9 +188,90 @@
                             </div>
                         </div>
                     </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card card-plain table-plain-bg">
+                                <div class="card-header ">
+                                    <h4 class="card-title">策略表现</h4>
+                                    <p class="card-category">比较基准是平均组合</p>
+                                </div>
+                                <div class="card-body table-full-width table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <th>组合</th>
+                                            <th>年化收益率</th>
+                                            <th>夏普比率</th>
+                                            <th>最大回撤</th>
+                                            <th>年化超额收益率</th>
+                                            <th>超额收益年化波动率</th>
+                                            <th>信息比率</th>
+                                            <th>相对月基准胜率</th>
+                                            <th>超额收益最大回撤</th>
+                                        </thead>
+                                        <tbody>
+                                            <tr id="p2">
+                                                <td>组合一</td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>                       <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                            </tr>
+                                            <tr id="base">
+                                                <td>基准</td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
+    <!-- 模态框（Modal） -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="myModalLabel">数据集</h4>
+                </div>
+                <div class="modal-body">
+                    <form id="dataForm"  action="http://localhost:5000/dataset" method="post">
+                        <div class="row">
+                            <div class="col-md-6 pr-1">
+                                <div class="form-group">
+                                    <label>数据集开始日期</label>
+                                    <input type="text" class="form-control" placeholder="开始日期" value="2000-01-01"
+                                    name="begin">
+                                </div>
+                            </div>
+                            <div class="col-md-6 pl-1">
+                                <div class="form-group">
+                                    <label>数据集结束日期</label>
+                                    <input type="text" class="form-control" placeholder="结束日期，输入形式如 2000-01-01" value="2018-01-31"
+                                    name="end">
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button id="dataset" type="button" class="btn btn-info btn-fill pull-right">使用</button>
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal -->
     </div>
 </body>
 <!--   Core JS Files   -->
@@ -257,26 +406,6 @@ $(document).ready(function() {
             background_image = false;
         }
     });
-
-    $.ajax({
-        url: 'http://localhost:5000/result',
-        type: 'GET',
-        dataType:'json',
-        success: function (res) {
-          initDashboardPageCharts(res);
-          performance();
-        },
-        error: function (msg) {
-        	$.notify({
-            	icon: "nc-icon nc-app",
-            	message: "数据更新失败"
-
-          },{
-              type: 'danger',
-              timer: 4000
-          });
-        }
-    });
 });
 
 function performance(){
@@ -293,12 +422,38 @@ function performance(){
         x1[3].innerHTML = res.excess.p;
         x1[4].innerHTML = res.ic.p;
         x1[5].innerHTML = res.win.p;
+
+      base = $("#base").children().toArray();
+      x2 = $("#p2").children().toArray();
+        x2[1].innerHTML = res.return.p;
+      base[1].innerHTML = res.return.b;
+
+        x2[2].innerHTML = res.sharp.p;
+      base[2].innerHTML = res.sharp.b;
+
+        x2[3].innerHTML = res.drawdown.p;
+      base[3].innerHTML = res.drawdown.b;
+
+        x2[4].innerHTML = res.excess.p;
+      base[4].innerHTML = res.excess.b;
+
+        x2[5].innerHTML = res.excess_vol.p;
+      base[5].innerHTML = res.excess_vol.b;
+
+        x2[6].innerHTML = res.ic.p;
+      base[6].innerHTML = res.ic.b;
+
+        x2[7].innerHTML = res.win.p;
+      base[7].innerHTML = res.win.b;
+
+        x2[8].innerHTML = res.excess_draw.p;
+      base[8].innerHTML = res.excess_draw.b;
     	$.notify({
         	icon: "nc-icon nc-app",
         	message: "数据更新成功"
       },{
           type: 'info',
-          timer: 4000
+          timer: 1000
       });
     },
     error: function (msg) {
@@ -308,7 +463,7 @@ function performance(){
 
       },{
           type: 'danger',
-          timer: 4000,
+          timer: 1000,
       });
     }
     });
@@ -328,7 +483,7 @@ function initDashboardPageCharts(data) {
         }
     },
     legend: {
-        data: ['基准', '组合', '上游', '中游', '下游', '金融', '消费', '成长']
+        data: ['组合', '基准', '上游', '中游', '下游', '金融', '消费', '成长']
     },
     grid: [           {
         left: '3%',
@@ -359,7 +514,7 @@ function initDashboardPageCharts(data) {
             end: 100
     	}],
     series: [ {
-                  name: '基准',
+                  name: '组合',
                   type: 'line',
                   data: data[7],
                   smooth: true,
@@ -370,7 +525,7 @@ function initDashboardPageCharts(data) {
                   }
               },
               {
-                  name: '组合',
+                  name: '基准',
                   type: 'line',
                   data: data[6],
                   smooth: true,
@@ -451,6 +606,76 @@ function initDashboardPageCharts(data) {
     // 使用刚指定的配置项和数据显示图表。
     myChart.setOption(option);
 }
+
+$("#backtest").click(function(){
+  var data = $("#mainForm").serialize();
+   $.ajax({
+    url:'http://localhost:5000/back_test',
+    type:'post',
+    data:data,
+    dataType:'json',
+    success:function(data){
+    	$.notify({
+        	icon: "nc-icon nc-app",
+        	message: "回测成功，进入回测结果页面查看结果"
+
+      },{
+          type: 'info',
+          timer: 1000
+      });
+      initDashboardPageCharts(data)
+      performance()
+      $(location).attr('href', '#backtest_result')
+    },
+    error:function(XMLHttpRequest, textStatus, errorThrown){
+      $.notify({
+        	icon: "nc-icon nc-app",
+        	message: "请求失败"
+
+      },{
+          type: 'danger',
+          timer: 1000
+      });
+    }
+   })
+
+})
+
+$("#dataset").click(function(){
+  var data = $("#dataForm").serialize();
+	$.notify({
+    	icon: "nc-icon nc-app",
+    	message: "数据集更新中，请稍等"
+  },{
+      type: 'warning',
+      timer: 4000
+  });
+   $.ajax({
+      url:'http://localhost:5000/dataset',
+      type:'post',
+      data:data,
+      dataType:'text',
+      success:function(data){
+      	$.notify({
+          	icon: "nc-icon nc-app",
+          	message: "数据集更新成功"
+        },{
+            type: 'info',
+            timer: 1000
+        });
+    },
+    error:function(XMLHttpRequest, textStatus, errorThrown){
+      $.notify({
+        	icon: "nc-icon nc-app",
+        	message: "数据集更新失败"
+      },{
+          type: 'danger',
+          timer: 1000
+      });
+    }
+   })
+
+})
 </script>
 
 </html>
