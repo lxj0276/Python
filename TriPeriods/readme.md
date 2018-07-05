@@ -2,6 +2,16 @@
 
 **注释也要对齐哦！**
 
+## pyinstaller
+指定 `python` 解释器的位置，用于直接运行
+```py
+#! C:\Python\python.exe
+```
+在首行指定编码，允许中文路径
+```py
+# -*- coding:utf-8 -*-
+```
+
 ## python
 + `a[::-1]` 倒序
 
