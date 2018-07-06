@@ -1,6 +1,15 @@
 # TriPeriods
 
 **注释也要对齐哦！**
+## ubuntu
+直接将 `python` 工程目录上传到 `linux` 上就可以部署。
+```shell
+python3 web.py
+```
+不过此时是前台运行，要转到后台运行，需要增加一行命令
+```shell
+nohup python3 web.py &
+```
 
 ## pyinstaller
 指定 `python` 解释器的位置，用于直接运行

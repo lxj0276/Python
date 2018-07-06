@@ -18,7 +18,7 @@ def ewma(x, weight):
     return reduce(lambda y, z: (1 - weight) * y + weight * z, x)
 
 
-def max_returns(returns, risk_structure, risk, base=None, up=1.0, industry=None, deviate=None, factor=None, xk=None):
+def max_returns(returns, risk_structure, risk, base=None, up=None, industry=None, deviate=None, factor=None, xk=None):
     """
     给定风险约束，最大化收益的最优投资组合
     :param returns: 下一期股票收益
@@ -40,6 +40,11 @@ def max_returns(returns, risk_structure, risk, base=None, up=1.0, industry=None,
     if base is not None:
         assert len(base) == len(returns), "numbers of companies in  base vector and returns vector are not the same"
 
+    if up is None:
+        up = np.ones(len(returns))
+    else:
+        up = np.ones(len(returns)) * up
+
     r, v = matrix(np.asarray(returns)) * -1, matrix(np.asarray(risk_structure))
     num = len(returns)
     base = matrix(np.asarray(base if base is not None else np.zeros(num))) * 1.0
@@ -58,7 +63,7 @@ def max_returns(returns, risk_structure, risk, base=None, up=1.0, industry=None,
     h1 = base
     # 个股上限
     g2 = matrix(np.diag(np.ones(num)))
-    h2 = matrix(up, (num, 1)) - base
+    h2 = matrix(up) - base
     g, h = matrix([g1, g2]), matrix([h1, h2])
     # 控制权重和
     # 0.0 if sum(base) > 0 else 1.0 在没有基准（即基准为 0.0）时为1.0，有基准时为0.0
@@ -86,7 +91,7 @@ def max_returns(returns, risk_structure, risk, base=None, up=1.0, industry=None,
     return sol['x']
 
 
-def min_risk(returns, risk_structure, target_return, base=None, up=1.0, industry=None, deviate=None):
+def min_risk(returns, risk_structure, target_return, base=None, up=None, industry=None, deviate=None):
     """
     给定目标收益，最小化风险
     :param returns: 下一期的股票收益
@@ -106,6 +111,11 @@ def min_risk(returns, risk_structure, target_return, base=None, up=1.0, industry
     if base is not None:
         assert len(base) == len(returns), "numbers of companies in  base vector and returns vector are not the same"
 
+    if up is None:
+        up = np.ones(len(returns))
+    else:
+        up = np.ones(len(returns)) * np.asarray(up)
+
     p = matrix(np.asarray(risk_structure))
     num = len(returns)
     q = matrix(np.zeros(num))
@@ -116,7 +126,7 @@ def min_risk(returns, risk_structure, target_return, base=None, up=1.0, industry
     h1 = base
     # 权重上限
     g2 = matrix(np.diag(np.ones(num)))
-    h2 = matrix(up, (num, 1)) - base
+    h2 = matrix(up) - base
     # 目标收益
     g3 = matrix(np.asarray(returns)).T * -1.0
     h3 = matrix(-1.0 * target_return, (1, 1))
