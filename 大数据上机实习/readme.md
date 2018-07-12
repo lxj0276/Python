@@ -43,7 +43,7 @@
 
 ## Ubuntu虚拟机
 + `VMware` 使用 `Ctrl + G` 使得鼠标键盘进入虚拟机并用 `Ctrl + Alt` 退出
-+ `Ubunto` 使用 `Ctrl + Alt + T` 打开命令行
++ `ubuntu` 使用 `Ctrl + Alt + T` 打开命令行
 + `sudo apt-get install` 远程安装
 + `Ctrl + h` 查看隐藏文件夹
 + `unzip` 解压 `.zip` 文件
@@ -51,7 +51,7 @@
 **文本和命令行的复制黏贴**
 完成虚拟机和客户机之间的复制黏贴的方法是使用 `ssh` 在客户机中访问虚拟机。
 + 保证虚拟机中安装了 `ssh`，`sudo apt-get install openssh-server`
-+ 在 `ubunto` 中的网络连接查看本机 **IP** 地址
++ 在 `ubuntu` 中的网络连接查看本机 **IP** 地址
 + 在客户机中用 `ssh` 访问
 + `putty` 中使用 **鼠标右键** 进行黏贴
 
