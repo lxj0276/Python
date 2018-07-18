@@ -42,6 +42,13 @@ points_high = [not(diff[i]) and diff1[i] for i in range(len(diff))]
 ## python
 + `series` 和 `dataframe` 可以直接切片取行索引
 
+## pandas
+**升采样与插值**
+```py
+new_sery = pd.concat([sery[points_low], sery[points_high]]).sort_index()
+new_sery = new_sery.reindex(sery.index).interpolate('linear')
+```
+
 ## matplotlib
 标注方法
 
