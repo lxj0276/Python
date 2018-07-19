@@ -49,6 +49,10 @@ new_sery = pd.concat([sery[points_low], sery[points_high]]).sort_index()
 new_sery = new_sery.reindex(sery.index).interpolate('linear')
 ```
 
+**删除某一行或列**
++ `df.drop(labels, axis=1)`
+可以删除若干行，若干列，指定 `inplace` 参数说明是就地修改还是生成新的数据框
+
 ## matplotlib
 标注方法
 
