@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from Optimus import Optimus
+from FactorModel import min_risk, max_returns
 
 
 def predict_month_return(data):
@@ -22,19 +22,18 @@ def allocate(data, method, arg):
     """
     predicts = predict(data)
     rs = np.cov(np.asmatrix(data).T)
-    op = Optimus()
 
     if method == 'min_risk':
         r = (1 + arg) ** (1 / 12) - 1
         up = predicts.iloc[-1] / r + 0.1
         up = up if up < 1.0 else 1.0
-        w = op.min_risk(target_return=r, up=up, returns=predicts, rs=rs)
+        w = min_risk(returns=predicts, risk_structure=rs, target_return=r, up=up)
         print(up)
         print(w)
         risk = (np.dot(w.T, np.dot(rs, w))[0, 0]) ** 0.5 * (12 ** 0.5)  # 年化
         return w, risk
     else:
-        w = op.max_returns(arg, returns=predicts, rs=rs)
+        w = max_returns(returns=predicts, risk_structure=rs, risk=arg)
         r = np.dot(w.T, np.asarray(predicts))[0]
         return w, r
 
@@ -102,7 +101,7 @@ def main():
     df = (df / df.shift(1) - 1).iloc[1:]
 
     res = pd.DataFrame(columns=df.columns, index=df.index, dtype='float64')
-    for i in range(12, len(df)+1):
+    for i in range(12, len(df)):
         res.iloc[i] = predict(df.iloc[i-12:i].dropna(axis=1))
 
     print(res)
