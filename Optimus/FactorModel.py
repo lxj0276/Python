@@ -8,6 +8,8 @@ from statsmodels.tsa.filters import hp_filter
 from cvxopt import matrix, solvers
 # 正确安装 cvxopt 的方式见这里:https://blog.csdn.net/qq_32106517/article/details/78746517
 
+show_progress = False
+
 
 def ewma(x, weight):
     """
@@ -85,7 +87,7 @@ def max_returns(returns, risk_structure, risk, base=None, up=None, industry=None
         elif deviate > 0.0:
             g, h = matrix([matrix([g, m]), -m]), matrix([matrix([h, c]), c])
 
-    # solvers.options['show_progress'] = False
+    solvers.options['show_progress'] = show_progress
     solvers.options['maxiters'] = 1000
     sol = solvers.cpl(r, func, g, h, A=a, b=b)
     return sol['x']
@@ -144,7 +146,7 @@ def min_risk(returns, risk_structure, target_return, base=None, up=None, industr
         elif deviate > 0.0:
             g, h = matrix([matrix([g, m]), -m]), matrix([matrix([h, c]), c])
 
-    # solvers.options['show_progress'] = False
+    solvers.options['show_progress'] = show_progress
     solvers.options['maxiters'] = 1000
     try:
         sol = solvers.qp(p, q, g, h, a, b)
