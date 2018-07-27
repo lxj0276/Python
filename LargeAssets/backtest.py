@@ -1,30 +1,30 @@
 import pandas as pd
 import numpy as np
 import tushare as ts
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 
 class BktestParam:
     init_period = ['2005-03-01', '2018-01-31']
-    commission_rate = 0
-    signal = None
-    refresh_dates = None
-    signal_params = {}
+    commission_rate = 0                         # 手续费
+    signal = None                               # 交易信号函数
+    refresh_dates = None                        # 调仓日期序列
+    signal_params = {}                          # 交易信号函数需要的额外参数
 
 
 class GlobalParam:
-    data = None
-    asset_pool = None
-    daily_close = None
-    daily_dates = None
-    base_nav = None
+    data = None                                 # 数据
+    asset_pool = None                           # 资产池
+    daily_close = None                          # 资产每日的收盘价
+    daily_dates = None                          # 交易日期序列
+    base_nav = None                             # 基准的净值曲线
 
 
 class BktestResult:
-    w = None
-    nav = None
-    nav_perf = None
-    df = None
+    w = None                                    # 每个调仓日期的权重
+    nav = None                                  # 回测的净值曲线
+    nav_perf = None                             # 回测表现
+    df = None                                   # 回测结果
 
 
 def signal(func):
@@ -34,15 +34,15 @@ def signal(func):
 
 def cal_long_weight():
     refresh_dates = []
-    w = pd.DataFrame(columns=GlobalParam.asset_pool, index=GlobalParam.daily_dates)
+    BktestResult.w = pd.DataFrame(columns=GlobalParam.asset_pool)
     for date in GlobalParam.daily_dates:
-        alloc, weight = BktestParam.signal(date, **BktestParam.signal_params)
-        if alloc:
+        sig, weight = BktestParam.signal(date, **BktestParam.signal_params)
+        if sig:
             refresh_dates.append(date)
-            w.loc[date, :] = weight
+            BktestResult.w.loc[date, :] = weight
+            BktestResult.w.loc[date, :].fillna(0, inplace=True)
 
-    w = w.reindex(refresh_dates)
-    return refresh_dates, w.fillna(0)
+    BktestParam.refresh_dates = refresh_dates
 
 
 def cal_nav():
@@ -80,7 +80,7 @@ def cal_nav():
             nav[i] = nav[i] * (1 - refresh_turn * commission_rate)
             last_portfolio = np.asarray(nav[i] * refresh_w)
 
-    return nav
+    BktestResult.nav = nav
 
 
 def main():
@@ -106,10 +106,8 @@ def main():
 
         return sig, weight
 
-    refresh_dates, w = cal_long_weight()
-    BktestParam.refresh_dates = refresh_dates
-    BktestResult.w = w
-    BktestResult.nav = cal_nav()
+    cal_long_weight()
+    cal_nav()
 
     data['test'] = BktestResult.nav
     # data.plot()
