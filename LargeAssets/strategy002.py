@@ -58,7 +58,7 @@ def factor_adj(w, date, k):
     sig[sig <= 0] = 1 / k
     sig[sig > 0] = k
     sig = sig.reindex(bt.GlobalParam.asset_pool)
-    w = (sig * w * w[:-1].sum() / sig.sum()).fillna(w[-1])
+    w = (sig * w * w[:-1].sum() / sig.sum()).fillna(w.iloc[-1])
 
     return w
 
@@ -87,12 +87,12 @@ def rs_adj(w, date, m, s):
     for i in sig.index:
         arr = rs_data[i].iloc[max(now - m, 0):now+1, 0]
         z = (arr - arr.mean()) / arr.std()
-        sig[i] = rs_data[i]['r2'] * z[-1]
+        sig[i] = rs_data[i]['r2'] * z.iloc[-1]
 
     sig = sig - s
     sig = sig.reindex(bt.GlobalParam.asset_pool).fillna(1)
     w[sig < 0] = 0
-    w[-1] = 1 - w[:-1].sum()
+    w.iloc[-1] = 1 - w[:-1].sum()
 
     return w
 
@@ -101,6 +101,7 @@ def init_data():
     assets = [3145, 3159, 4978, 6455, 14599]
     data_list = [pd.read_csv('data/{}.csv'.format(i), index_col='Date')
                  for i in assets]
+
     data = pd.DataFrame(index=data_list[0].index)
     for i in range(len(assets)):
         data[assets[i]] = data_list[i]['ClosePrice']
@@ -121,16 +122,16 @@ def init_data():
     momentum_data[14599] = monthly_data[14599] / monthly_data[14599].shift(1)
 
     rs_data = pd.DataFrame(index=daily_dates)                                       # RSRS数据
+
+    def f(x):
+        tmp = pd.DataFrame(x)
+        tmp['constant'] = 1
+        res = sm.OLS(x['HighPrice'], x[['constant', 'LowPrice']]).fit()
+        r2 = res.rsquared
+        beta = res.params[-1]
+        return {'r2': r2, 'beta': beta}
+
     for i in range(len(assets)):
-
-        def f(x):
-            tmp = pd.DataFrame(x)
-            tmp['constant'] = 1
-            res = sm.OLS(x['HighPrice'], x[['constant', 'LowPrice']]).fit()
-            r2 = res.rsquared
-            beta = res.params[-1]
-            return {'r2': r2, 'beta': beta}
-
         rs_data[assets[i]] = data_list[i].rolling(18).apply(f)
 
     bt.GlobalParam.daily_dates = daily_dates
@@ -147,8 +148,9 @@ def main():
 
     # init back test params
     bt.BktestParam.signal_params = {'risk': 0.03}
-    bt.BktestParam.momentum_params = {}
-    bt.BktestParam.rs_params = {}
+    bt.BktestParam.momentum_params = {'k': 2}
+    bt.BktestParam.rs_params = {'m': 600,
+                                's': [0.7, 0.5, 0.8, 0, 0]}
 
     # print(data_close)
     bt.cal_long_weight()
