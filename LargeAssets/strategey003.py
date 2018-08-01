@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 import statsmodels.api as sm
 from pylab import mpl
 
+mpl.rcParams['font.sans-serif'] = ['FangSong']  # 指定默认字体
+mpl.rcParams['axes.unicode_minus'] = False      # 解决保存图像是负号'-'显示为方块的问题
+
 
 # init back test params
 def func(context, date, risk):
@@ -235,20 +238,13 @@ def back_test(context, risk):
 
     context.BktestParam['signal'] = func2
     w0 = context.cal_long_weight()
-    strategy0 = context.cal_nav()
+    nav0 = context.cal_nav()
 
     context.BktestParam['signal'] = func3
     w1 = context.cal_long_weight()
-    strategy1 = context.cal_nav()
+    nav1 = context.cal_nav()
 
-    mpl.rcParams['font.sans-serif'] = ['FangSong']  # 指定默认字体
-    mpl.rcParams['axes.unicode_minus'] = False      # 解决保存图像是负号'-'显示为方块的问题
-    context.GlobalParam['daily_close']['风险平价'] = strategy0
-    context.GlobalParam['daily_close']['风险平价+动量'] = strategy1
-    context.GlobalParam['daily_close'].plot(title='年化风险水平{:.1f}%'.format(risk * 100))
-    plt.savefig('{:.1f}%.png'.format(risk * 100))
-
-    return w0, w1
+    return w0, w1, nav0, nav1
 
 
 def main():
@@ -256,17 +252,22 @@ def main():
     # init global params
     init_data(context)
 
-    back_test(context, 0.2)
-    # writer1 = pd.ExcelWriter('output/风险平价.xlsx')
-    # writer2 = pd.ExcelWriter('output/风险平价+动量.xlsx')
-    # for r in [0.03, 0.05, 0.07, 0.09]:
-    #     print('running:{}'.format(r))
-    #     w0, w1 = back_test(context, r)
-    #     w0.to_excel(writer1, str(r))
-    #     w1.to_excel(writer2, str(r))
-    #
-    # writer1.save()
-    # writer2.save()
+    # back_test(context, 0.2)
+    writer1 = pd.ExcelWriter('output/风险平价.xlsx')
+    writer2 = pd.ExcelWriter('output/风险平价+动量.xlsx')
+    for r in [0.03, 0.05, 0.07, 0.09]:
+        print('running:{}'.format(r))
+        w0, w1, nav0, nav1 = back_test(context, r)
+        w0.to_excel(writer1, str(r))
+        w1.to_excel(writer2, str(r))
+
+        context.GlobalParam['daily_close']['风险平价'] = nav0
+        context.GlobalParam['daily_close']['风险平价+动量'] = nav1
+        context.GlobalParam['daily_close'].plot(title='年化风险水平{:.1f}%'.format(r * 100))
+        plt.savefig('{:.1f}%.png'.format(r * 100))
+
+    writer1.save()
+    writer2.save()
 
 
 if __name__ == '__main__':
