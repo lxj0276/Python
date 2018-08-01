@@ -16,9 +16,13 @@
 ```
 writer = pd.ExcelWriter('output/风险平价.xlsx')
 w0.to_excel(writer, str(risk))
+w1.to_excel(writer, ...)
 writer.save()
 ```
 
 ## statsmodels
 + `OLS()`
   `missing='drop'` 忽略缺失值
+
+## matplotlib
++ `savefig()`
