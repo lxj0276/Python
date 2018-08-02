@@ -3,10 +3,14 @@
 ## Python
 + `list.extend()` 后面接 `iterable` 用于多个值的扩展
 
+## numpy
++ `np.logical_and()` 取两个序列的逻辑与结果 
 
 ## pandas
 + `pd.Series`
   `copy=False` 默认创建时，是不复制的，对新对象的修改会影响到原来的对象
+
++ `index.astype()` 用于数据转换，pandas在读取时，列为数字默认读取为字符串，需要转换
 
 + `pd.read_csv()`
   `header=[0, 1]` 用于指定多重索引
