@@ -32,6 +32,16 @@ writer.save()
 ## statsmodels
 + `OLS()`
   `missing='drop'` 忽略缺失值
++ `fit()` 结果
+  `params`
+  `pvalues`
+  `fittedvalues`
+  `rsquared`
+  `tvalues()`
 
 ## matplotlib
 + `savefig()`
++ `plt.xlims`
+  `plt.legend`
+  `plt.xticks`
+  `plt.scatter`
