@@ -11,4 +11,4 @@ for i in some_list:
 
 ## matplotlib
 
-+ `plt.close()` 进行一次绘图的之后调用，以免重复绘图影响之后的
++ `plt.close()` 进行一次绘图的之后调用，以免重复绘图影响之后的绘图结果
