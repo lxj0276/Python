@@ -2,14 +2,12 @@ import numpy as np
 import pandas as pd
 import os
 
-from time import time
 from config import R
-
-os.environ['R_USER'] = R['R_USER']
-os.environ['R_HOME'] = R['R_HOME']
 
 
 class RConsole:
+    os.environ['R_USER'] = R['R_USER']
+    os.environ['R_HOME'] = R['R_HOME']
     import rpy2.robjects.numpy2ri
     from rpy2.robjects.packages import importr
     rpy2.robjects.numpy2ri.activate()
@@ -64,30 +62,5 @@ def cal_similarity(arr1, arr2, freq='M', num=3):
     arr1 = arr1 / arr1[0]
     arr2 = arr2 / arr2[0]
 
-    arr1.plot()
-    arr2.plot()
-
     return r.dtw(arr1, arr2)
 
-
-def get_data():
-    # pre-processing the data
-    index_list = [3145, 3159, 4978, 6455, 14599]
-    data_list = [pd.read_csv('data/{}.csv'.format(i)) for i in index_list]
-    data = pd.concat([i['close'] for i in data_list], axis=1)
-    data.index = pd.to_datetime(data_list[0]['Date'])
-    data.columns = index_list
-    data.dropna(inplace=True)
-    data = data / data.iloc[0, :]
-    return data
-
-
-if __name__ == '__main__':
-    data = get_data()
-
-    import matplotlib.pyplot as plt
-
-    print(cal_similarity(data[3145], data[3159], 'M', 3))
-    print(cal_similarity(data[3145], data[4978], 'M', 3))
-
-    plt.show()
