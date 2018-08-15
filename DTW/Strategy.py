@@ -11,7 +11,7 @@ def signal(context, date, refresh):
         close = context.GlobalParam['daily_close']
         begin = time()
 
-        model = Model(close[:date], 3, 3)
+        model = Model(close[:date], 6, 3)
         result = model.train()
         ranks, _ = result.filter(5)
 
