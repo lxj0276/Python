@@ -26,8 +26,8 @@ class Model:
         # 生成月度的索引序列，并筛选掉最后一个月
         month = data.index.year * 100 + data.index.month
         month_filter = month != month[-1]
-        data = data[month_filter]
         month = month[month_filter]
+        data = data[month_filter]
 
         # 生成历史每三个月片段的起止点，按月滚动
         starts = data.index[month.to_series().diff() != 0]  # 每月月初
