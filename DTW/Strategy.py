@@ -11,7 +11,7 @@ def signal(context, date, refresh):
         close = context.GlobalParam['daily_close']
         begin = time()
 
-        model = Model(close[:date], 3, 1)
+        model = Model(close[:date], 3, 3)
         result = model.train()
         ranks, _ = result.filter(5)
 
@@ -50,8 +50,11 @@ def main():
     print("total time : {:.2f}".format(time()-begin))
 
     import matplotlib.pyplot as plt
+    data = data.loc[starts[0]: starts[-1]]
+    data = data / data.iloc[0, :]
     data.index = pd.to_datetime(data.index)
     nav.index = pd.to_datetime(nav.index)
+    nav.name = '策略'
     data.plot()
     nav.plot()
     plt.show()
