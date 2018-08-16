@@ -18,10 +18,10 @@ def signal(context, date, refresh):
 
         model = Model(data[:date], OPT['trend_win'], OPT['return_win'])
         result = model.train(OPT['method'])
-        ranks, _ = result.filter(OPT['pos'])
+        ranks, _ = result.filter(len(OPT['pos']))
 
         print("耗时{:.2f}秒".format(time()-begin))
-        weight = pd.Series(1 / OPT['pos'], index=ranks.index)
+        weight = pd.Series(OPT['pos'], index=ranks.index)
         weight = weight.reindex(data.columns).fillna(0)
         return True, weight
     else:

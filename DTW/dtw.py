@@ -26,8 +26,11 @@ class RConsole:
             template = np.asarray(template)
 
         # Calculate the alignment vector and corresponding distance
-        alignment = self.R.dtw(query, template, keep=True)
-        dist = alignment.rx('distance')[0][0]
+        if np.isnan(query).any() or np.isnan(template).any():
+            dist = np.nan
+        else:
+            alignment = self.R.dtw(query, template, keep=True)
+            dist = alignment.rx('distance')[0][0]
         return dist
 
 

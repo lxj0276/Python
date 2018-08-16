@@ -23,3 +23,13 @@ def test():
 由于要求有环境变量，有两个选择：
 + 在 `IDE` 中加入环境变量，`Pycharm` 中为 `Run Configuration`
 + 通过 `os` 包加入环境变量，即 `os.environ['R_USER']`
+
+## pandas
++ 快速获得每月初、每年初
+```py
+df.index = pd.to_datetime(df.index)
+year = df.index.year
+year_starts = year.to_series().diff()
+year_starts = df.index[year_starts.fillna(1.0) > 0]
+```
+`index.to_series()` 转换为 `Series`
