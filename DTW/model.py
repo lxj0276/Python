@@ -7,11 +7,17 @@ class Model:
 
     # this is the class to deal with the training result
     class Result:
-        def __init__(self, raw):
+        def __init__(self, raw, method, past_return):
             self.raw = raw
-            self.min = raw.min()
             self.min_index = raw.idxmin()
-            self.rank = self.min.sort_values()
+
+            if method == 'filter':
+                self.rank = raw.min().sort_values()
+            else:
+                columns = self.raw.columns
+                returns = {columns[i]: past_return[self.min_index[i]][columns[i]]
+                           for i in range(len(self.min_index))}
+                self.rank = pd.Series(returns).sort_values(ascending=False)
 
         def filter(self, n):
             # filter first n obs.
@@ -55,19 +61,25 @@ class Model:
         self.past_return = {last_day[i].strftime('%Y-%m-%d'): past_return[i]
                             for i in range(len(last_day))}
 
-    def train(self):
+    def train(self, method='filter'):
         past_return, past_trend, now = self.past_return, self.past_trend, self.now
         r = self.r
 
         result = pd.DataFrame(index=past_return.keys(), columns=now.columns)
         # for each stock
         for i in range(now.shape[1]):
-            filtered = {key: past_return[key][i] for key in past_return
-                        if past_return[key][i] > 1}
-            col = {key: r.dtw(past_trend[key].iloc[:, i], now.iloc[:, i]) for key in filtered}
-            result.iloc[:, i] = pd.Series(col)
+            if method == 'non_filter':
+                col = {key: r.dtw(past_trend[key].iloc[:, i], now.iloc[:, i]) for key in past_trend}
+                result.iloc[:, i] = pd.Series(col)
+            elif method == 'filter':
+                filtered = {key: past_return[key][i] for key in past_return
+                            if past_return[key][i] > 1}
+                col = {key: r.dtw(past_trend[key].iloc[:, i], now.iloc[:, i]) for key in filtered}
+                result.iloc[:, i] = pd.Series(col)
+            else:
+                raise Exception("没有定义的方法：{}".format(method))
 
-        return self.Result(result)
+        return self.Result(result, method, self.past_return)
 
 
 if __name__ == '__main__':

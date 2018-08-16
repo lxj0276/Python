@@ -37,9 +37,9 @@ class Context:
     def cal_long_weight(self):
 
         assert self.BktestParam['signal'] is not None, '请定义调仓函数：BktestParam["signal"]'
-        assert self.GlobalParam['daily_dates'] is not None, '交易日期序列不能为空！GlobalParam["daily_dates"]'
         assert self.GlobalParam['daily_close'] is not None, '需要资产每日的收盘价才能回测！GlobalParam["daily_close"]'
 
+        self.GlobalParam['daily_dates'] = self.GlobalParam['daily_close'].index.tolist()
         self.BktestParam['asset_pool'] = self.GlobalParam['daily_close'].columns
         self.BktestResult['w'] = pd.DataFrame(columns=self.BktestParam['asset_pool'])
 
@@ -91,6 +91,7 @@ class Context:
                 # 根据前后权重差别计算换手率，调整净值
                 refresh_turn = np.nansum(np.abs(refresh_w - last_w))
                 nav[i] = nav[i] * (1 - refresh_turn * commission_rate)
+                print(nav[i])
                 last_portfolio = np.asarray(nav[i] * refresh_w)
 
         self.BktestResult['nav'] = nav
