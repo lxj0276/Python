@@ -37,10 +37,11 @@ class Context:
     def cal_long_weight(self):
 
         assert self.BktestParam['signal'] is not None, '请定义调仓函数：BktestParam["signal"]'
-        assert self.GlobalParam['daily_dates'] is not None, '交易日期序列不能为空！GlobalParam["daily_dates"]'
         assert self.GlobalParam['daily_close'] is not None, '需要资产每日的收盘价才能回测！GlobalParam["daily_close"]'
 
-        self.BktestParam['asset_pool'] = self.GlobalParam['daily_close'].columns
+        self.GlobalParam['daily_close'] = self.GlobalParam['daily_close'].fillna(method='bfill')
+        self.GlobalParam['daily_dates'] = self.GlobalParam['daily_close'].index.tolist()
+        self.GlobalParam['asset_pool'] = self.GlobalParam['daily_close'].columns
         self.BktestResult['w'] = pd.DataFrame(columns=self.GlobalParam['asset_pool'])
 
         # 在每个交易日讨论是否调仓
