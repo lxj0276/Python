@@ -41,8 +41,8 @@ class Context:
 
         self.GlobalParam['daily_close'] = self.GlobalParam['daily_close'].fillna(method='bfill')
         self.GlobalParam['daily_dates'] = self.GlobalParam['daily_close'].index.tolist()
-        self.BktestParam['asset_pool'] = self.GlobalParam['daily_close'].columns
-        self.BktestResult['w'] = pd.DataFrame(columns=self.BktestParam['asset_pool'])
+        self.GlobalParam['asset_pool'] = self.GlobalParam['daily_close'].columns
+        self.BktestResult['w'] = pd.DataFrame(columns=self.GlobalParam['asset_pool'])
 
         # 在每个交易日讨论是否调仓
         refresh_dates = []
@@ -92,7 +92,6 @@ class Context:
                 # 根据前后权重差别计算换手率，调整净值
                 refresh_turn = np.nansum(np.abs(refresh_w - last_w))
                 nav[i] = nav[i] * (1 - refresh_turn * commission_rate)
-                print(nav[i])
                 last_portfolio = np.asarray(nav[i] * refresh_w)
 
         self.BktestResult['nav'] = nav
