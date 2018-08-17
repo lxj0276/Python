@@ -3,8 +3,8 @@ import numpy as np
 
 OPT = {
     'data_dir': 'data/中信一级行业指数/hs300.csv',
-    'nav_sdir': 'output/hs300_nav_6163.csv',
-    'w_sdir': 'output/hs300_w_6163.csv',
+    'nav_sdir': 'output/hs300_nav_align_6163.csv',
+    'w_sdir': 'output/hs300_w_align_6163.csv',
     'begin': 201001,
     'end': 201808,
     'return_win': 1,
