@@ -30,6 +30,8 @@ def signal(context, date, refresh, industry):
         df['rank'] = ranks
         df['industry'] = industry['Industry']
         for i in ind_num.index:
+            stocks = df.index[df['industry'] == i][:ind_num.loc[i, 'Code']]
+            df.loc[stocks, 'weight'] = 1 / total
 
         print("耗时{:.2f}秒".format(time()-begin))
         weight = df['weight']
