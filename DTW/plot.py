@@ -11,8 +11,8 @@ mpl.rcParams['axes.unicode_minus'] = False      # 解决保存图像是负号'-'
 if __name__ == '__main__':
     name = "{}{}{}".format(OPT['trend_win'], OPT['return_win'], len(OPT['pos']))
     data = pd.read_csv(OPT['data_dir'], engine='python', index_col=0)
-    nav1 = pd.read_csv('output/nav_{}.csv'.format(name), header=None, index_col=0)
-    nav2 = pd.read_csv('output/nav_my_{}.csv'.format(name), header=None, index_col=0)
+    nav1 = pd.read_csv('output/hs300_nav_{}.csv'.format(name), header=None, index_col=0)
+    nav2 = pd.read_csv('output/hs300_nav_my_{}.csv'.format(name), header=None, index_col=0)
 
     # 基准
     base = pd.read_csv('data/3145.csv', index_col=0)

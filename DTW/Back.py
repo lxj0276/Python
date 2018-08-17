@@ -76,7 +76,9 @@ class Context:
             if sum(last_portfolio) == 0:
                 nav[i] = nav[i - 1]
             else:
-                last_portfolio = np.asarray(close.iloc[i, :] / close.iloc[i - 1, :]) * last_portfolio
+                # 缺失的收盘价用1填充
+                close1, close2 = close.iloc[i - 1, :].fillna(1), close.iloc[i, :].fillna(1)
+                last_portfolio = np.asarray(close2 / close1) * last_portfolio
                 nav[i] = np.nansum(last_portfolio)
 
             # 判断当前日期是否为新的调仓日，是则进行调仓

@@ -33,3 +33,10 @@ year_starts = year.to_series().diff()
 year_starts = df.index[year_starts.fillna(1.0) > 0]
 ```
 `index.to_series()` 转换为 `Series`
+
++ 不要对 `chained index` 赋值
+```py
+dfmi['one']['second'] = value
+```
+类似于之上的赋值都不太行，应该先将要赋值的部分的 **索引** 提取出来使用
++ `df.loc[]` 方法去赋值

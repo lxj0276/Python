@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from dtw import RConsole
 
 
@@ -16,6 +17,7 @@ class Model:
             else:
                 columns = self.raw.columns
                 returns = {columns[i]: past_return[self.min_index[i]][columns[i]]
+                           if self.min_index[i] is not np.nan else np.nan
                            for i in range(len(self.min_index))}
                 self.rank = pd.Series(returns).sort_values(ascending=False)
 
