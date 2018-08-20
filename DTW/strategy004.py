@@ -10,26 +10,26 @@ from time import time
 # pd.set_option('display.max_rows', 3000)
 
 
-def signal(context, date, refresh, industry):
+def signal(context, date, refresh, industry_hs, industry_zz):
     if date in refresh:
         print("{}调仓".format(date))
         data = context.Add['data']
 
-        num = industry.groupby('Industry').count()
+        num = industry_zz.groupby('Industry').count()
         ind_num = (num / 5).applymap(round)
         ind_num[ind_num['Code'] == 0] = 1
-        ind_num['Weight'] = industry['Weight'].groupby(industry['Industry']).sum() / 100
+        ind_num['Weight'] = industry_hs['Weight'].groupby(industry_hs['Industry']).sum() / 100
         ind_num['Weight'] = ind_num['Weight'] / ind_num['Code']
 
         begin = time()
 
         model = Model(data[:date], OPT['trend_win'], OPT['return_win'])
         result = model.train(OPT['method'])
-        ranks, _ = result.filter(300)
+        ranks, _ = result.filter(800)
 
         df = pd.DataFrame(columns=['industry', 'rank', 'weight'])
         df['rank'] = ranks
-        df['industry'] = industry['Industry']
+        df['industry'] = industry_zz['Industry']
         for i in ind_num.index:
             stocks = df.index[df['industry'] == i][:ind_num.loc[i, 'Code']]
             df.loc[stocks, 'weight'] = ind_num.loc[i, 'Weight']
@@ -44,8 +44,10 @@ def signal(context, date, refresh, industry):
 
 def main():
     data = pd.read_csv(OPT['data_dir'], engine='python', index_col=0)
-    industry = pd.read_excel('data/中信一级行业指数/industry.xlsx', sheet_name=2)   # hs300行业数据
-    industry.index = industry['Code']
+    industry1 = pd.read_excel('data/中信一级行业指数/industry.xlsx', sheet_name=2)   # hs300行业数据
+    industry2 = pd.read_excel('data/中信一级行业指数/industry.xlsx', sheet_name=1)   # zz800行业数据
+    industry1.index = industry1['Code']
+    industry2.index = industry2['Code']
     date_index = pd.to_datetime(data.index)
 
     # 生成月度的索引序列
@@ -58,7 +60,8 @@ def main():
     context = Context()
     context.Add['data'] = data
     context.Add['signal_params'] = {'refresh': starts,
-                                    'industry': industry}
+                                    'industry_hs': industry1,
+                                    'industry_zz': industry2}
     context.BktestParam['signal'] = signal
     context.GlobalParam['daily_close'] = data.loc[starts[0]: starts[-1]]
 

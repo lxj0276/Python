@@ -43,7 +43,7 @@ def signal(context, date, refresh, industry):
 
 def main():
     data = pd.read_csv(OPT['data_dir'], engine='python', index_col=0)
-    industry = pd.read_excel('data/中信一级行业指数/industry.xlsx', sheet_name=0)
+    industry = pd.read_excel('data/中信一级行业指数/industry.xlsx', sheet_name=0)   # 行业数据
     industry.index = industry['Code']
     date_index = pd.to_datetime(data.index)
 

@@ -9,13 +9,12 @@ mpl.rcParams['axes.unicode_minus'] = False      # 解决保存图像是负号'-'
 
 
 if __name__ == '__main__':
-    name = "{}{}{}".format(OPT['trend_win'], OPT['return_win'], len(OPT['pos']))
     data = pd.read_csv(OPT['data_dir'], engine='python', index_col=0)
-    nav1 = pd.read_csv('output/hs300_nav_{}.csv'.format(name), header=None, index_col=0)
-    nav2 = pd.read_csv('output/hs300_nav_align_{}.csv'.format(name), header=None, index_col=0)
+    nav1 = pd.read_csv('output/zz800_s1.csv', header=None, index_col=0)
+    nav3 = pd.read_csv('output/hs300_nav_align_6163.csv', header=None, index_col=0)
 
     # 基准
-    base = pd.read_csv('data/3145.csv', index_col=0)
+    base = pd.read_csv(OPT['base_dir'], index_col=0)
     base = base.reindex(nav1.index)['close']
     base = base / base[0]
 
@@ -25,15 +24,16 @@ if __name__ == '__main__':
     # base = returns.sum(axis=1) / 29
     # base = base.cumprod()
 
-    df = pd.DataFrame(columns=['hs300', '策略1-等权', '策略2-对齐'])
+    df = pd.DataFrame(columns=['hs300', '策略-中证', '策略-沪深'])
     df.iloc[:, 0] = base
     df.iloc[:, 1] = nav1[1]
-    df.iloc[:, 2] = nav2[1]
+    # df.iloc[:, 2] = nav2[1]
+    df.iloc[:, 2] = nav3[1]
     df.index = pd.to_datetime(df.index)
 
     import matplotlib.pyplot as plt
 
     df.plot()
-    plt.savefig('fig/{}.png'.format(name))
+    plt.savefig('fig/zz800.png')
 
 
