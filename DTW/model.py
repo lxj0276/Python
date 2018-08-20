@@ -39,7 +39,7 @@ class Model:
 
         # 生成历史每三个月片段的起止点，按月滚动
         starts = data.index[month.to_series().diff() != 0]  # 每月月初
-        assert len(starts) > n+m, '输入数据长度不足 {} 月'.format(n)
+        assert len(starts) > n+m, '输入数据长度不足 {} 月'.format(n+m)
 
         last_day = starts[n: -m]                            # 每三月的最后一个交易日
         first_day = starts[: -n-m]                          # 每三月的第一个交易日
