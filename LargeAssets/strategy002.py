@@ -3,7 +3,7 @@ import numpy as np
 
 import optimus as op
 from back import Context
-from config import W_DIR, PIC_DIR
+from config import PIC_DIR, W_DIR
 
 import matplotlib.pyplot as plt
 from pylab import mpl
@@ -11,6 +11,7 @@ from pylab import mpl
 mpl.rcParams['font.sans-serif'] = ['FangSong']  # 指定默认字体
 mpl.rcParams['axes.unicode_minus'] = False      # 解决保存图像是负号'-'显示为方块的问题
 
+# Fm.show_progress = True
 
 # init back test params
 
@@ -27,12 +28,10 @@ def signal(context, date, risk):
         predicts = now_data.ewm(alpha=0.8).mean().iloc[-1]
         rs = np.cov(np.asmatrix(now_data).T)
 
-        r = (1 + risk) ** (1 / 12) - 1
-        up = predicts.iloc[-1] / r + 0.1
-        up = up if up < 1.0 else 1.0
+        r = risk / (12 ** 0.5)
         try:
             # 风险平价
-            w = op.min_risk(returns=predicts, risk_structure=rs, target_return=r, up=up)
+            w = op.max_returns(returns=predicts, risk_structure=rs, risk=r)
             w = pd.Series(w, index=now_data.columns)
             w = w.reindex(context.GlobalParam['asset_pool']).fillna(0)
             if round(np.nansum(w), 1) != 1.0:
@@ -125,14 +124,15 @@ def main():
     data_close = init_data(context)
 
     writer = pd.ExcelWriter(W_DIR + '风险平价+动量.xlsx')
-    for r in [0.03, 0.05, 0.07, 0.09, 0.2]:
+    for r in [0.1, 0.2]:
         print('running:{}'.format(r))
         w, nav = back_test(context, r)
+        w['nav'] = nav
         w.to_excel(writer, str(r))
 
         data_close['风险平价+动量'] = nav
         data_close.index = pd.to_datetime(data_close.index)
-        data_close.plot(title='目标收益水平{:.1f}%'.format(r * 100))
+        data_close.plot(title='年化风险水平{:.1f}%'.format(r * 100))
         plt.savefig(PIC_DIR + '{:.1f}%.png'.format(r * 100))
 
     writer.save()
