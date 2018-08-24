@@ -1,8 +1,19 @@
+from functools import reduce
+import pandas as pd
 import numpy as np
 from cvxopt import matrix, solvers
 # 正确安装 cvxopt 的方式见这里:https://blog.csdn.net/qq_32106517/article/details/78746517
 
 show_progress = False
+
+
+def ewma(x, weight):
+    """
+    :param x: Series
+    :param weight: 权重
+    :return: ewma结果
+    """
+    return reduce(lambda y, z: (1 - weight) * y + weight * z, x)
 
 
 def max_returns(returns, risk_structure, risk, base=None, up=None, eq=None, noeq=None):
