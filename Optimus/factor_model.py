@@ -17,7 +17,7 @@ class Context:
             self.psr = psr
             self.rs = rs
 
-        def max_returns(self, risk, b=None, up=1.0, noeq=None, eq=None):
+        def max_returns(self, risk, b=None, up=1.0, eq=None, noeq=None):
             """
             给定风险或年化跟踪误差最大化组合收益
             :param risk: 风险或年化跟踪误差
@@ -27,9 +27,9 @@ class Context:
             :param eq: 其他相等条件
             :return: 最优化的投资组合
             """
-            return max_returns(self.psr, self.rs, risk, b, up, noeq, eq)
+            return max_returns(self.psr, self.rs, risk, b, up, eq, noeq)
 
-        def min_risk(self, target_return, b=None, up=1.0, noeq=None, eq=None):
+        def min_risk(self, target_return, b=None, up=1.0, eq=None, noeq=None):
             """
             给定组合目标收益，最小化风险
             :param target_return: 目标组合收益
@@ -39,7 +39,7 @@ class Context:
             :param eq: 其他相等条件
             :return: 最优化的投资组合
             """
-            return min_risk(self.psr, self.rs, target_return, b, up, noeq, eq)
+            return min_risk(self.psr, self.rs, target_return, b, up, eq, noeq)
 
         def print(self):
             print('预测股票收益\n', self.psr)
@@ -111,32 +111,21 @@ if __name__ == '__main__':
     # 所有日期列表
     date_list = list(data['Date'].unique())
 
-    right = 0
-    false = 0
-    for i in range(5, len(date_list)-1):
-        # 选取最近一期数据
-        dd = data[data['Date'] < date_list[i]]
-        # 选取最新的factor loading
-        latest_factor_loading = data.loc[data['Date'] == date_list[i+1], factors]
+    # 选取最新的factor loading
+    latest_factor_loading = data.loc[data['Date'] == date_list[-1], factors]
+    data = data[data['Date'] < date_list[-1]]
 
-        # 创建模型
-        context = Context(dd['Return'], dd[factors])
-        model = context.create_factor_model(latest_factor_loading)
+    # 创建模型
+    context = Context(data['Return'], data[factors])
+    model = context.create_factor_model(latest_factor_loading)
 
-        # 计算股票数量，并将基准设置为等权
-        stock_num = latest_factor_loading.shape[0]
-        B = np.ones(stock_num) / stock_num
+    # 计算股票数量，并将基准设置为等权
+    stock_num = latest_factor_loading.shape[0]
+    B = np.ones(stock_num) / stock_num
 
-        try:
-            # 最优化
-            print(model.min_risk(0.1, B, 0.01))
-            right += 1
-        except ValueError:
-            try:
-                print(model.min_risk(0.01, B, 0.01))
-                right += 1
-            except ValueError:
-                false += 1
+    try:
+        # 最优化
+        print(model.min_risk(0.1, B, 0.01))
+    except ValueError:
+        print(model.min_risk(0.01, B, 0.01))
 
-    print(right)
-    print(false)
